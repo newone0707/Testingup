@@ -1,7 +1,32 @@
 import aiohttp
 import logging
 from custom_crypto import decrypt_appx_data
-from enc import decrypt, decode_base64
+from base64 import b64decode
+import base64
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+
+def decrypt(enc):
+    try:
+        if not enc:
+            return ""
+        enc = b64decode(enc.split(':')[0])
+        key = '638udh3829162018'.encode('utf-8')
+        iv = 'fedcba9876543210'.encode('utf-8')
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        plaintext = unpad(cipher.decrypt(enc), AES.block_size)
+        return plaintext.decode('utf-8')
+    except Exception as e:
+        return ""
+
+def decode_base64(encoded_str):
+    try:
+        if not encoded_str:
+            return ""
+        decoded_bytes = base64.b64decode(encoded_str)
+        return decoded_bytes.decode('utf-8')
+    except Exception as e:
+        return ""
 
 async def safe_fetch_json(url, headers):
     try:
