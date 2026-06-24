@@ -338,14 +338,18 @@ def handle_zip_video(zip_path, name, key):
                     outfile.write(data)
         
         mp4_output = f'{name}.mp4'
-        subprocess.run(f'ffmpeg -y -i "{ts_output}" -c copy "{mp4_output}"', shell=True)
+        res = subprocess.run(f'ffmpeg -y -i "{ts_output}" -c copy -bsf:a aac_adtstoasc "{mp4_output}"', shell=True, capture_output=True)
+        if res.returncode != 0:
+            res = subprocess.run(f'ffmpeg -y -i "{ts_output}" -c copy "{mp4_output}"', shell=True, capture_output=True)
         
-        if os.path.exists(ts_output): os.remove(ts_output)
+        if res.returncode != 0:
+            os.rename(ts_output, mp4_output)
+        else:
+            if os.path.exists(ts_output): os.remove(ts_output)
+            
         if os.path.exists(mp4_output):
             return mp4_output
-        else:
-            print("ffmpeg failed to create mp4 output")
-            return None
+        return None
     except Exception as e:
         print(f'Zip extraction error: {e}')
         return None
