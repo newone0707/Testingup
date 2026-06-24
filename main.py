@@ -1455,6 +1455,15 @@ async def txt_handler(bot: Client, m: Message):
                         continue
 
                     res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey, global_referer)
+                    if not res_file or not os.path.exists(res_file):
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        await m.reply_text(f"⚠️**Downloading Failed (Link expired or invalid)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
+                        count += 1
+                        continue
+                    
                     filename = res_file
                     try:
                         await prog1.delete(True)
