@@ -1349,7 +1349,29 @@ async def txt_handler(bot: Client, m: Message):
                             time.sleep(e.x)
                             continue    
 
-                elif ".ws" in url and  url.endswith(".ws"):
+                elif any(ext in url for ext in [".zip", ".rar"]):
+                    if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
+                        ext = "zip" if ".zip" in url else "rar"
+                        success = await asyncio.to_thread(helper.sync_download, url, f'{namef}.{ext}', global_referer)
+                        if not success:
+                            origin_url = global_referer.rstrip('/')
+                            cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{origin_url}" -o "{namef}.{ext}" "{url}"'
+                            os.system(cmd)
+                        res_file = f'{namef}.{ext}'
+                    else:
+                        ext = "zip" if ".zip" in url else "rar"
+                        cmd = f'yt-dlp -o "{namef}.{ext}" "{url}"'
+                        download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+                        os.system(download_cmd)
+                        res_file = f'{namef}.{ext}'
+                    try:
+                        copy = await bot.send_document(chat_id=channel_id, document=res_file, caption=cczip)
+                        count += 1
+                        os.remove(res_file)
+                    except FloodWait as e:
+                        await m.reply_text(str(e))
+                        time.sleep(e.x)
+                        continue                elif ".ws" in url and  url.endswith(".ws"):
                     try:
                         await helper.pdf_download(f"{api_url}utkash-ws?url={url}&authorization={api_token}",f"{name}.html")
                         time.sleep(1)
