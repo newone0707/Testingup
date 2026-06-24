@@ -272,15 +272,30 @@ async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, chan
     time.sleep(3) 
 
 
-def decrypt_file(file_path, key):  
-    if not os.path.exists(file_path): 
-        return False  
+def get_key_bytes(key_str):
+    if not key_str:
+        return b''
+    if isinstance(key_str, bytes):
+        return key_str
+    if isinstance(key_str, str):
+        try:
+            return bytes.fromhex(key_str)
+        except ValueError:
+            return key_str.encode('utf-8')
+    return b''
 
-    with open(file_path, "r+b") as f:  
-        num_bytes = min(28, os.path.getsize(file_path))  
-        with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:  
-            for i in range(num_bytes):  
-                mmapped_file[i] ^= ord(key[i]) if i < len(key) else i 
+def decrypt_file(file_path, key_str):
+    if not os.path.exists(file_path):
+        return False
+    key = get_key_bytes(key_str)
+    if not key:
+        return True
+
+    with open(file_path, "r+b") as f:
+        num_bytes = min(28, os.path.getsize(file_path))
+        with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
+            for i in range(num_bytes):
+                mmapped_file[i] ^= key[i] if i < len(key) else i
     return True  
 
 def sync_download(url, output_path, referer):
@@ -298,11 +313,14 @@ def sync_download(url, output_path, referer):
         print(f"Direct Download Error: {e}")
         return False
 
-def decrypt_chunk(data, key):
+def decrypt_chunk(data, key_str):
+    key = get_key_bytes(key_str)
+    if not key:
+        return data
     data_bytearray = bytearray(data)
     num_bytes = min(28, len(data_bytearray))
     for i in range(num_bytes):
-        data_bytearray[i] ^= ord(key[i]) if i < len(key) else i
+        data_bytearray[i] ^= key[i] if i < len(key) else i
     return bytes(data_bytearray)
 
 def handle_zip_video(zip_path, name, key):
