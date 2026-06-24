@@ -11,6 +11,7 @@ import requests
 import tgcrypto
 import subprocess
 import concurrent.futures
+from curl_cffi import requests as cffi_requests
 from math import ceil
 from utils import progress_bar
 from pyrogram import Client, filters
@@ -280,8 +281,35 @@ def decrypt_file(file_path, key):
                 mmapped_file[i] ^= ord(key[i]) if i < len(key) else i 
     return True  
 
-async def download_and_decrypt_video(url, cmd, name, key):  
-    video_path = await download_video(url, cmd, name)  
+def sync_download(url, output_path, referer):
+    print(f"DEBUG sync_download URL: {url}")
+    try:
+        ref_header = referer + "/" if referer and not referer.endswith("/") else referer
+        origin_header = referer[:-1] if referer and referer.endswith("/") else referer
+        r = cffi_requests.get(url, stream=True, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': ref_header, 'Origin': origin_header}, impersonate="chrome")
+        r.raise_for_status()
+        with open(output_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        return True
+    except Exception as e:
+        print(f"Direct Download Error: {e}")
+        return False
+
+async def download_and_decrypt_video(url, cmd, name, key):
+    if "encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url:
+        output_path = f"{name}.mp4"
+        if ".mkv" in url:
+            output_path = f"{name}.mkv"
+        print(f"Using curl_cffi for direct download: {url}")
+        success = await asyncio.to_thread(sync_download, url, output_path, "")
+        if success:
+            video_path = output_path
+        else:
+            print("Direct download failed. Falling back...")
+            video_path = await download_video(url, cmd, name)
+    else:
+        video_path = await download_video(url, cmd, name)  
     
     if video_path:  
         decrypted = decrypt_file(video_path, key)  
