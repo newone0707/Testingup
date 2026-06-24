@@ -1761,7 +1761,7 @@ async def text_handler(bot: Client, m: Message):
                         except: pass
                         count += 1
                         await asyncio.sleep(1)
-                        continue
+                        return
 
                     res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)
                     filename = res_file
@@ -1791,7 +1791,7 @@ async def text_handler(bot: Client, m: Message):
                         except: pass
                         count += 1
                         await asyncio.sleep(1)
-                        continue
+                        return
 
                     res_file = await helper.decrypt_and_merge_video(mpd, keys_string, path, name, raw_text2)
                     filename = res_file
@@ -1821,7 +1821,7 @@ async def text_handler(bot: Client, m: Message):
                         except: pass
                         count += 1
                         await asyncio.sleep(1)
-                        continue
+                        return
 
                     res_file = await helper.download_video(url, cmd, name)
                     filename = res_file
