@@ -296,15 +296,12 @@ def sync_download(url, output_path, referer):
         print(f"Direct Download Error: {e}")
         return False
 
-async def download_and_decrypt_video(url, cmd, name, key):
+async def download_and_decrypt_video(url, cmd, name, key, referer=""):
     if "encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url:
         output_path = f"{name}.mp4"
         if ".mkv" in url:
             output_path = f"{name}.mkv"
         print(f"Using curl_cffi for direct download: {url}")
-        import re
-        _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', url.split('?')[0], re.IGNORECASE)
-        referer = f"{_m.group(1)}{_m.group(2)}.{_m.group(4)}/" if _m else ""
         success = await asyncio.to_thread(sync_download, url, output_path, referer)
         if success:
             video_path = output_path
