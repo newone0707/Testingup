@@ -20,7 +20,8 @@ from logs import logging
 from bs4 import BeautifulSoup
 import saini as helper
 from utils import progress_bar
-from vars import API_ID, API_HASH, BOT_TOKEN, OWNER, CREDIT, AUTH_USERS, TOTAL_USERS
+from vars import API_ID, API_HASH, BOT_TOKEN, OWNER, CREDIT
+from db import db
 from flask import Flask
 import threading
 import os
@@ -104,10 +105,10 @@ async def add_auth_user(client: Client, message: Message):
         return 
     try:
         new_user_id = int(message.command[1])
-        if new_user_id in AUTH_USERS:
+        if await db.is_auth_user(new_user_id) or new_user_id == OWNER:
             await message.reply_text("**User ID is already authorized.**")
         else:
-            AUTH_USERS.append(new_user_id)
+            await db.add_auth_user(new_user_id)
             await message.reply_text(f"**User ID `{new_user_id}` added to authorized users.**")
             await bot.send_message(chat_id=new_user_id, text=f"<b>Great! You are added in Premium Membership!</b>")
     except (IndexError, ValueError):
@@ -118,7 +119,8 @@ async def list_auth_users(client: Client, message: Message):
     if message.chat.id != OWNER:
         return
     
-    user_list = '\n'.join(map(str, AUTH_USERS))  # AUTH_USERS ki list dikhayenge
+    auth_users = await db.get_all_auth_users()
+    user_list = '\n'.join(map(str, auth_users))  # AUTH_USERS ki list dikhayenge
     await message.reply_text(f"**Authorized Users:**\n{user_list}")
 
 @bot.on_message(filters.command("rmauth") & filters.private)
@@ -128,10 +130,10 @@ async def remove_auth_user(client: Client, message: Message):
     
     try:
         user_id_to_remove = int(message.command[1])
-        if user_id_to_remove not in AUTH_USERS:
+        if not await db.is_auth_user(user_id_to_remove):
             await message.reply_text("**User ID is not in the authorized users list.**")
         else:
-            AUTH_USERS.remove(user_id_to_remove)
+            await db.remove_auth_user(user_id_to_remove)
             await message.reply_text(f"**User ID `{user_id_to_remove}` removed from authorized users.**")
             await bot.send_message(chat_id=user_id_to_remove, text=f"<b>Oops! You are removed from Premium Membership!</b>")
     except (IndexError, ValueError):
@@ -147,7 +149,8 @@ async def broadcast_handler(client: Client, message: Message):
         return
     success = 0
     fail = 0
-    for user_id in list(set(TOTAL_USERS)):
+    total_users = await db.get_all_total_users()
+    for user_id in list(set(total_users)):
         try:
             # Text
             if message.reply_to_message.text:
@@ -191,12 +194,13 @@ async def broadusers_handler(client: Client, message: Message):
     if message.chat.id != OWNER:
         return
 
-    if not TOTAL_USERS:
+    total_users = await db.get_all_total_users()
+    if not total_users:
         await message.reply_text("**No Broadcasted User**")
         return
 
     user_infos = []
-    for user_id in list(set(TOTAL_USERS)):
+    for user_id in list(set(total_users)):
         try:
             user = await client.get_users(int(user_id))
             fname = user.first_name if user.first_name else " "
@@ -537,7 +541,7 @@ async def restart_handler(_, m):
 @bot.on_message(filters.command("stop") & filters.private)
 async def cancel_handler(client: Client, m: Message):
     global processing_request, cancel_requested
-    if m.chat.id not in AUTH_USERS:
+    if not await db.is_auth_user(m.chat.id) and m.chat.id != OWNER:
         print(f"User ID not in AUTH_USERS", m.chat.id)
         await bot.send_message(
             m.chat.id, 
@@ -558,8 +562,8 @@ async def cancel_handler(client: Client, m: Message):
 @bot.on_message(filters.command("start"))
 async def start(bot, m: Message):
     user_id = m.chat.id
-    if user_id not in TOTAL_USERS:
-        TOTAL_USERS.append(user_id)
+    if not await db.is_total_user(user_id):
+        await db.add_total_user(user_id)
     user = await bot.get_me()
 
     mention = user.mention
@@ -599,7 +603,7 @@ async def start(bot, m: Message):
     )
 
     await asyncio.sleep(1)
-    if m.chat.id in AUTH_USERS:
+    if await db.is_auth_user(m.chat.id) or m.chat.id == OWNER:
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("💎 Features", callback_data="feat_command"), InlineKeyboardButton("🕸️ Commands", callback_data="cmd_command")],
             [InlineKeyboardButton("💳 Plans", callback_data="upgrade_command")],
@@ -938,7 +942,7 @@ async def txt_handler(bot: Client, m: Message):
     processing_request = True
     cancel_requested = False
     user_id = m.from_user.id
-    if m.chat.id not in AUTH_USERS:
+    if not await db.is_auth_user(m.chat.id) and m.chat.id != OWNER:
             print(f"User ID not in AUTH_USERS", m.chat.id)
             await bot.send_message(m.chat.id, f"<blockquote>__**Oopss! You are not a Premium member\nPLEASE /upgrade YOUR PLAN\nSend me your user id for authorization\nYour User id**__ - `{m.chat.id}`</blockquote>\n")
             return
@@ -1373,11 +1377,28 @@ async def txt_handler(bot: Client, m: Message):
                     Show = f"<i><b>Video Downloading</b></i>\n<blockquote><b>{str(count).zfill(3)}) {name1}</b></blockquote>" 
                     prog = await bot.send_message(channel_id, Show, disable_web_page_preview=True)
                     prog1 = await m.reply_text(Show1, disable_web_page_preview=True)
-                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)  
-                    filename = res_file  
-                    await prog1.delete(True)
-                    await prog.delete(True)
-                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    cached_vid = await db.get_video(link0)
+                    if cached_vid and cached_vid.get('file_id'):
+                        try:
+                            await bot.send_video(channel_id, cached_vid['file_id'], caption=cc)
+                        except Exception:
+                            await bot.send_document(channel_id, cached_vid['file_id'], caption=cc)
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        count += 1
+                        await asyncio.sleep(1)
+                        continue
+
+                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)
+                    filename = res_file
+                    try:
+                        await prog1.delete(True)
+                        await prog.delete(True)
+                    except: pass
+                    file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    if file_id: await db.save_video(link0, file_id, name)
                     count += 1  
                     await asyncio.sleep(1)  
                     continue  
@@ -1403,11 +1424,28 @@ async def txt_handler(bot: Client, m: Message):
                     Show = f"<i><b>Video Downloading</b></i>\n<blockquote><b>{str(count).zfill(3)}) {name1}</b></blockquote>"
                     prog = await bot.send_message(channel_id, Show, disable_web_page_preview=True)
                     prog1 = await m.reply_text(Show1, disable_web_page_preview=True)
+                    cached_vid = await db.get_video(link0)
+                    if cached_vid and cached_vid.get('file_id'):
+                        try:
+                            await bot.send_video(channel_id, cached_vid['file_id'], caption=cc)
+                        except Exception:
+                            await bot.send_document(channel_id, cached_vid['file_id'], caption=cc)
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        count += 1
+                        await asyncio.sleep(1)
+                        continue
+
                     res_file = await helper.decrypt_and_merge_video(mpd, keys_string, path, name, raw_text2)
                     filename = res_file
-                    await prog1.delete(True)
-                    await prog.delete(True)
-                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    try:
+                        await prog1.delete(True)
+                        await prog.delete(True)
+                    except: pass
+                    file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    if file_id: await db.save_video(link0, file_id, name)
                     count += 1
                     await asyncio.sleep(1)
                     continue
@@ -1433,11 +1471,28 @@ async def txt_handler(bot: Client, m: Message):
                     Show = f"<i><b>Video Downloading</b></i>\n<blockquote><b>{str(count).zfill(3)}) {name1}</b></blockquote>"
                     prog = await bot.send_message(channel_id, Show, disable_web_page_preview=True)
                     prog1 = await m.reply_text(Show1, disable_web_page_preview=True)
+                    cached_vid = await db.get_video(link0)
+                    if cached_vid and cached_vid.get('file_id'):
+                        try:
+                            await bot.send_video(channel_id, cached_vid['file_id'], caption=cc)
+                        except Exception:
+                            await bot.send_document(channel_id, cached_vid['file_id'], caption=cc)
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        count += 1
+                        await asyncio.sleep(1)
+                        continue
+
                     res_file = await helper.download_video(url, cmd, name)
                     filename = res_file
-                    await prog1.delete(True)
-                    await prog.delete(True)
-                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    try:
+                        await prog1.delete(True)
+                        await prog.delete(True)
+                    except: pass
+                    file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    if file_id: await db.save_video(link0, file_id, name)
                     count += 1
                     time.sleep(1)
                 
@@ -1694,10 +1749,28 @@ async def text_handler(bot: Client, m: Message):
                            f"<blockquote expandable>🔗𝐋𝐢𝐧𝐤 » {url}</blockquote>\n" \
                            f"✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
                     prog = await m.reply_text(Show, disable_web_page_preview=True)
-                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)  
-                    filename = res_file  
-                    await prog.delete(True)  
-                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    cached_vid = await db.get_video(link0)
+                    if cached_vid and cached_vid.get('file_id'):
+                        try:
+                            await bot.send_video(channel_id, cached_vid['file_id'], caption=cc)
+                        except Exception:
+                            await bot.send_document(channel_id, cached_vid['file_id'], caption=cc)
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        count += 1
+                        await asyncio.sleep(1)
+                        continue
+
+                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)
+                    filename = res_file
+                    try:
+                        await prog1.delete(True)
+                        await prog.delete(True)
+                    except: pass
+                    file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    if file_id: await db.save_video(link0, file_id, name)
                     await asyncio.sleep(1)  
                     pass
 
@@ -1706,10 +1779,28 @@ async def text_handler(bot: Client, m: Message):
                            f"<blockquote expandable>🔗𝐋𝐢𝐧𝐤 » {url}</blockquote>\n" \
                            f"✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
                     prog = await m.reply_text(Show, disable_web_page_preview=True)
+                    cached_vid = await db.get_video(link0)
+                    if cached_vid and cached_vid.get('file_id'):
+                        try:
+                            await bot.send_video(channel_id, cached_vid['file_id'], caption=cc)
+                        except Exception:
+                            await bot.send_document(channel_id, cached_vid['file_id'], caption=cc)
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        count += 1
+                        await asyncio.sleep(1)
+                        continue
+
                     res_file = await helper.decrypt_and_merge_video(mpd, keys_string, path, name, raw_text2)
                     filename = res_file
-                    await prog.delete(True)
-                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    try:
+                        await prog1.delete(True)
+                        await prog.delete(True)
+                    except: pass
+                    file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    if file_id: await db.save_video(link0, file_id, name)
                     await asyncio.sleep(1)
                     pass
      
@@ -1718,10 +1809,28 @@ async def text_handler(bot: Client, m: Message):
                            f"<blockquote expandable>🔗𝐋𝐢𝐧𝐤 » {url}</blockquote>\n" \
                            f"✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
                     prog = await m.reply_text(Show, disable_web_page_preview=True)
+                    cached_vid = await db.get_video(link0)
+                    if cached_vid and cached_vid.get('file_id'):
+                        try:
+                            await bot.send_video(channel_id, cached_vid['file_id'], caption=cc)
+                        except Exception:
+                            await bot.send_document(channel_id, cached_vid['file_id'], caption=cc)
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        count += 1
+                        await asyncio.sleep(1)
+                        continue
+
                     res_file = await helper.download_video(url, cmd, name)
                     filename = res_file
-                    await prog.delete(True)
-                    await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    try:
+                        await prog1.delete(True)
+                        await prog.delete(True)
+                    except: pass
+                    file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
+                    if file_id: await db.save_video(link0, file_id, name)
                     time.sleep(1)
 
             except Exception as e:
