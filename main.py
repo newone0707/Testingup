@@ -368,7 +368,7 @@ async def txt_handler(bot: Client, m: Message):
                 content = f.read()
             content = content.split("\n")
             links = []
-            global_referer = ""
+            global_referer = "https://web.classplusapp.com/"
             for i in content:
                 if "BaseURL:" in i:
                     raw_base = i.split("BaseURL:")[1].strip()
@@ -983,7 +983,7 @@ async def txt_handler(bot: Client, m: Message):
         content = content.split("\n")
         
         links = []
-        global_referer = ""
+        global_referer = "https://web.classplusapp.com/"
         for i in content:
             if "BaseURL:" in i:
                 raw_base = i.split("BaseURL:")[1].strip()
