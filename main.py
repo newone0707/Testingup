@@ -996,9 +996,15 @@ async def txt_handler(bot: Client, m: Message):
                 continue
             if i.strip() == "" or "Course:" in i or "Video:" in i or "URL:" in i:
                 continue
-            if "://" in i:
-                url = i.split("://", 1)[1]
-                links.append(i.split("://", 1))
+            if "://" in i or "ADX_ENC:" in i:
+                if "ADX_ENC:" in i:
+                    parts = i.split(":ADX_ENC:", 1)
+                    if len(parts) == 2:
+                        url = "ADX_ENC:" + parts[1]
+                        links.append([parts[0], url])
+                else:
+                    url = i.split("://", 1)[1]
+                    links.append(i.split("://", 1))
                 if ".pdf" in url:
                     pdf_count += 1
                 elif url.endswith((".png", ".jpeg", ".jpg")):
@@ -1165,6 +1171,15 @@ async def txt_handler(bot: Client, m: Message):
                 cancel_requested = False
                 return
   
+            original_url = links[i][1]
+            if original_url.startswith("ADX_ENC:"):
+                from appx_decrypter import resolve_appx_link
+                resolved_url = await resolve_appx_link(original_url)
+                if not resolved_url:
+                    await m.reply_text("Failed to decrypt link dynamically.")
+                    continue
+                links[i][1] = resolved_url.split("://", 1)[1] if "://" in resolved_url else resolved_url
+
             Vxy = links[i][1].replace("file/d/","uc?export=download&id=").replace("www.youtube-nocookie.com/embed", "youtu.be").replace("?modestbranding=1", "").replace("/view?usp=sharing","")
             url = "https://" + Vxy
             link0 = "https://" + Vxy
