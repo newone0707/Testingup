@@ -1352,7 +1352,7 @@ async def txt_handler(bot: Client, m: Message):
                             time.sleep(e.x)
                             continue    
 
-                elif any(ext in url for ext in [".zip", ".rar"]):
+                elif any(ext in url for ext in [".zip", ".rar"]) and not ('appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url):
                     if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
                         ext = "zip" if ".zip" in url else "rar"
                         success = await asyncio.to_thread(helper.sync_download, url, f'{namef}.{ext}', global_referer)
@@ -1419,7 +1419,7 @@ async def txt_handler(bot: Client, m: Message):
                         time.sleep(e.x)
                         continue    
                     
-                elif 'encrypted.m' in url:    
+                elif 'encrypted.m' in url or ('appx' in url and '.zip' in url) or ('classx' in url and '.zip' in url) or ('encrypted' in url and '.zip' in url):    
                     remaining_links = len(links) - count
                     progress = (count / len(links)) * 100
                     Show1 = f"<blockquote>🚀𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬 » {progress:.2f}%</blockquote>\n┃\n" \
@@ -1820,7 +1820,7 @@ async def text_handler(bot: Client, m: Message):
                         time.sleep(e.x)
                         pass
                                 
-                elif 'encrypted.m' in url:    
+                elif 'encrypted.m' in url or ('appx' in url and '.zip' in url) or ('classx' in url and '.zip' in url) or ('encrypted' in url and '.zip' in url):    
                     Show = f"**⚡Dᴏᴡɴʟᴏᴀᴅɪɴɢ Sᴛᴀʀᴛᴇᴅ...⏳**\n" \
                            f"<blockquote expandable>🔗𝐋𝐢𝐧𝐤 » {url}</blockquote>\n" \
                            f"✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
