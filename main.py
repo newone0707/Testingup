@@ -1333,7 +1333,8 @@ async def txt_handler(bot: Client, m: Message):
                             if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
                                 success = await asyncio.to_thread(helper.sync_download, url, f'{namef}.pdf', global_referer)
                                 if not success:
-                                    cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{global_referer.rstrip(\'/\')}" -o "{namef}.pdf" "{url}"'
+                                    origin_url = global_referer.rstrip('/')
+                                    cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{origin_url}" -o "{namef}.pdf" "{url}"'
                                     download_cmd = f"{cmd} -R 25 --fragment-retries 25"
                                     os.system(download_cmd)
                             else:
@@ -1742,7 +1743,8 @@ async def text_handler(bot: Client, m: Message):
                             if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
                                 success = await asyncio.to_thread(helper.sync_download, url, f'{name}.pdf', global_referer)
                                 if not success:
-                                    cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{global_referer.rstrip(\'/\')}" -o "{name}.pdf" "{url}"'
+                                    origin_url = global_referer.rstrip('/')
+                                    cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{origin_url}" -o "{name}.pdf" "{url}"'
                                     download_cmd = f"{cmd} -R 25 --fragment-retries 25"
                                     os.system(download_cmd)
                             else:
