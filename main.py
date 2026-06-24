@@ -998,10 +998,13 @@ async def txt_handler(bot: Client, m: Message):
                 continue
             if "://" in i or "ADX_ENC:" in i:
                 if "ADX_ENC:" in i:
-                    parts = i.split(":ADX_ENC:", 1)
+                    parts = i.split("ADX_ENC:", 1)
                     if len(parts) == 2:
                         url = "ADX_ENC:" + parts[1]
-                        links.append([parts[0], url])
+                        title = parts[0].rstrip(" :")
+                        links.append([title, url])
+                    else:
+                        continue
                 else:
                     url = i.split("://", 1)[1]
                     links.append(i.split("://", 1))
@@ -1024,7 +1027,8 @@ async def txt_handler(bot: Client, m: Message):
                 else:
                     other_count += 1
         os.remove(x)
-    except:
+    except Exception as e:
+        print(f"Error parsing file: {e}")
         await m.reply_text("<b>🔹Invalid file input.</b>")
         os.remove(x)
         return
