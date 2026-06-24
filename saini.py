@@ -302,7 +302,10 @@ async def download_and_decrypt_video(url, cmd, name, key):
         if ".mkv" in url:
             output_path = f"{name}.mkv"
         print(f"Using curl_cffi for direct download: {url}")
-        success = await asyncio.to_thread(sync_download, url, output_path, "")
+        import re
+        _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', url.split('?')[0], re.IGNORECASE)
+        referer = f"{_m.group(1)}{_m.group(2)}.{_m.group(4)}/" if _m else ""
+        success = await asyncio.to_thread(sync_download, url, output_path, referer)
         if success:
             video_path = output_path
         else:
