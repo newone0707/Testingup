@@ -368,8 +368,21 @@ async def txt_handler(bot: Client, m: Message):
                 content = f.read()
             content = content.split("\n")
             links = []
+            global_referer = ""
             for i in content:
-                links.append(i.split("://", 1))
+                if "BaseURL:" in i:
+                    raw_base = i.split("BaseURL:")[1].strip()
+                    import re
+                    _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', raw_base, re.IGNORECASE)
+                    if _m:
+                        global_referer = f"{_m.group(1)}{_m.group(2)}.{_m.group(4)}/"
+                    else:
+                        global_referer = raw_base
+                    continue
+                if i.strip() == "" or "Course:" in i or "Video:" in i or "URL:" in i:
+                    continue
+                if "://" in i:
+                    links.append(i.split("://", 1))
             os.remove(x)
         except:
              await m.reply_text("**Invalid file input.**")
@@ -970,7 +983,19 @@ async def txt_handler(bot: Client, m: Message):
         content = content.split("\n")
         
         links = []
+        global_referer = ""
         for i in content:
+            if "BaseURL:" in i:
+                raw_base = i.split("BaseURL:")[1].strip()
+                import re
+                _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', raw_base, re.IGNORECASE)
+                if _m:
+                    global_referer = f"{_m.group(1)}{_m.group(2)}.{_m.group(4)}/"
+                else:
+                    global_referer = raw_base
+                continue
+            if i.strip() == "" or "Course:" in i or "Video:" in i or "URL:" in i:
+                continue
             if "://" in i:
                 url = i.split("://", 1)[1]
                 links.append(i.split("://", 1))
@@ -1305,9 +1330,16 @@ async def txt_handler(bot: Client, m: Message):
                             
                     else:
                         try:
-                            cmd = f'yt-dlp -o "{namef}.pdf" "{url}"'
-                            download_cmd = f"{cmd} -R 25 --fragment-retries 25"
-                            os.system(download_cmd)
+                            if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
+                                success = await asyncio.to_thread(helper.sync_download, url, f'{namef}.pdf', global_referer)
+                                if not success:
+                                    cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{global_referer.rstrip(\'/\')}" -o "{namef}.pdf" "{url}"'
+                                    download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+                                    os.system(download_cmd)
+                            else:
+                                cmd = f'yt-dlp -o "{namef}.pdf" "{url}"'
+                                download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+                                os.system(download_cmd)
                             copy = await bot.send_document(chat_id=channel_id, document=f'{namef}.pdf', caption=cc1)
                             count += 1
                             os.remove(f'{namef}.pdf')
@@ -1391,7 +1423,7 @@ async def txt_handler(bot: Client, m: Message):
                         await asyncio.sleep(1)
                         continue
 
-                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)
+                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey, global_referer)
                     filename = res_file
                     try:
                         await prog1.delete(True)
@@ -1707,9 +1739,16 @@ async def text_handler(bot: Client, m: Message):
                             
                     else:
                         try:
-                            cmd = f'yt-dlp -o "{name}.pdf" "{url}"'
-                            download_cmd = f"{cmd} -R 25 --fragment-retries 25"
-                            os.system(download_cmd)
+                            if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
+                                success = await asyncio.to_thread(helper.sync_download, url, f'{name}.pdf', global_referer)
+                                if not success:
+                                    cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{global_referer.rstrip(\'/\')}" -o "{name}.pdf" "{url}"'
+                                    download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+                                    os.system(download_cmd)
+                            else:
+                                cmd = f'yt-dlp -o "{name}.pdf" "{url}"'
+                                download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+                                os.system(download_cmd)
                             copy = await bot.send_document(chat_id=m.chat.id, document=f'{name}.pdf', caption=cc1)
                             os.remove(f'{name}.pdf')
                         except FloodWait as e:
@@ -1763,7 +1802,7 @@ async def text_handler(bot: Client, m: Message):
                         await asyncio.sleep(1)
                         return
 
-                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey)
+                    res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey, global_referer)
                     filename = res_file
                     try:
                         await prog1.delete(True)
