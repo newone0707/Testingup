@@ -1341,9 +1341,12 @@ async def txt_handler(bot: Client, m: Message):
                                 cmd = f'yt-dlp -o "{namef}.pdf" "{url}"'
                                 download_cmd = f"{cmd} -R 25 --fragment-retries 25"
                                 os.system(download_cmd)
-                            copy = await bot.send_document(chat_id=channel_id, document=f'{namef}.pdf', caption=cc1)
-                            count += 1
-                            os.remove(f'{namef}.pdf')
+                            if os.path.exists(f'{namef}.pdf'):
+                                copy = await bot.send_document(chat_id=channel_id, document=f'{namef}.pdf', caption=cc1)
+                                count += 1
+                                os.remove(f'{namef}.pdf')
+                            else:
+                                await bot.send_message(chat_id=channel_id, text=f"❌ **Failed to download:** {namef}\nLink might have expired.")
                         except FloodWait as e:
                             await m.reply_text(str(e))
                             time.sleep(e.x)
@@ -1365,9 +1368,12 @@ async def txt_handler(bot: Client, m: Message):
                         os.system(download_cmd)
                         res_file = f'{namef}.{ext}'
                     try:
-                        copy = await bot.send_document(chat_id=channel_id, document=res_file, caption=cczip)
-                        count += 1
-                        os.remove(res_file)
+                        if os.path.exists(res_file):
+                            copy = await bot.send_document(chat_id=channel_id, document=res_file, caption=cczip)
+                            count += 1
+                            os.remove(res_file)
+                        else:
+                            await bot.send_message(chat_id=channel_id, text=f"❌ **Failed to download:** {namef}\nLink might have expired.")
                     except FloodWait as e:
                         await m.reply_text(str(e))
                         time.sleep(e.x)
@@ -1714,9 +1720,11 @@ async def text_handler(bot: Client, m: Message):
                 if "drive" in url:
                     try:
                         ka = await helper.download(url, name)
-                        copy = await bot.send_document(chat_id=m.chat.id,document=ka, caption=cc1)
-                        count+=1
-                        os.remove(ka)
+                        if os.path.exists(ka):
+                            copy = await bot.send_document(chat_id=m.chat.id,document=ka, caption=cc1)
+                            os.remove(ka)
+                        else:
+                            await bot.send_message(chat_id=m.chat.id, text=f"❌ **Failed to download:** {name}\nLink might have expired.")
                     except FloodWait as e:
                         await m.reply_text(str(e))
                         time.sleep(e.x)
@@ -1775,8 +1783,11 @@ async def text_handler(bot: Client, m: Message):
                                 cmd = f'yt-dlp -o "{name}.pdf" "{url}"'
                                 download_cmd = f"{cmd} -R 25 --fragment-retries 25"
                                 os.system(download_cmd)
-                            copy = await bot.send_document(chat_id=m.chat.id, document=f'{name}.pdf', caption=cc1)
-                            os.remove(f'{name}.pdf')
+                            if os.path.exists(f'{name}.pdf'):
+                                copy = await bot.send_document(chat_id=m.chat.id, document=f'{name}.pdf', caption=cc1)
+                                os.remove(f'{name}.pdf')
+                            else:
+                                await bot.send_message(chat_id=m.chat.id, text=f"❌ **Failed to download:** {name}\nLink might have expired.")
                         except FloodWait as e:
                             await m.reply_text(str(e))
                             time.sleep(e.x)
