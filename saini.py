@@ -338,10 +338,14 @@ def handle_zip_video(zip_path, name, key):
                     outfile.write(data)
         
         mp4_output = f'{name}.mp4'
-        subprocess.run(f'ffmpeg -i "{ts_output}" -c copy "{mp4_output}"', shell=True)
+        subprocess.run(f'ffmpeg -y -i "{ts_output}" -c copy "{mp4_output}"', shell=True)
         
         if os.path.exists(ts_output): os.remove(ts_output)
-        return mp4_output
+        if os.path.exists(mp4_output):
+            return mp4_output
+        else:
+            print("ffmpeg failed to create mp4 output")
+            return None
     except Exception as e:
         print(f'Zip extraction error: {e}')
         return None
@@ -350,6 +354,11 @@ def handle_zip_video(zip_path, name, key):
             shutil.rmtree(temp_dir)
 
 async def download_and_decrypt_video(url, cmd, name, key, referer=""):
+    if not key:
+        m = re.search(r'encrypted-([a-fA-F0-9]+)', url)
+        if m:
+            key = m.group(1)
+            
     if "encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url:
         is_zip = ".zip" in url
         output_path = f"{name}.zip" if is_zip else f"{name}.mp4"
