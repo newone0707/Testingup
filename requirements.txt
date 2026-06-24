@@ -15,3 +15,4 @@ pyromod
 ffmpeg
 ffprobe
 curl_cffi
+motor
