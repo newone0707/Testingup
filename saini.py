@@ -348,10 +348,17 @@ async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, n
     start_time = time.time()
 
     try:
-        await bot.send_video(channel_id, w_filename, caption=cc, supports_streaming=True, height=720, width=1280, thumb=thumbnail, duration=dur, progress=progress_bar, progress_args=(reply, start_time))
+        sent_msg = await bot.send_video(channel_id, w_filename, caption=cc, supports_streaming=True, height=720, width=1280, thumb=thumbnail, duration=dur, progress=progress_bar, progress_args=(reply, start_time))
     except Exception:
-        await bot.send_document(channel_id, w_filename, caption=cc, progress=progress_bar, progress_args=(reply, start_time))
+        sent_msg = await bot.send_document(channel_id, w_filename, caption=cc, progress=progress_bar, progress_args=(reply, start_time))
     os.remove(w_filename)
     await reply.delete(True)
     await reply1.delete(True)
     os.remove(f"{filename}.jpg")
+    
+    file_id = None
+    if sent_msg.video:
+        file_id = sent_msg.video.file_id
+    elif sent_msg.document:
+        file_id = sent_msg.document.file_id
+    return file_id
