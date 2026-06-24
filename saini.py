@@ -1,5 +1,7 @@
 import os
 import re
+import zipfile
+import shutil
 import time
 import mmap
 import datetime
@@ -296,9 +298,61 @@ def sync_download(url, output_path, referer):
         print(f"Direct Download Error: {e}")
         return False
 
+def decrypt_chunk(data, key):
+    data_bytearray = bytearray(data)
+    num_bytes = min(28, len(data_bytearray))
+    for i in range(num_bytes):
+        data_bytearray[i] ^= ord(key[i]) if i < len(key) else i
+    return bytes(data_bytearray)
+
+def handle_zip_video(zip_path, name, key):
+    temp_dir = f'{name}_temp'
+    os.makedirs(temp_dir, exist_ok=True)
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+        
+        chunks = []
+        for root, _, files in os.walk(temp_dir):
+            for f in files:
+                if f.endswith('.tsf') or f.endswith('.ts') or f.endswith('.m4s'):
+                    chunks.append(os.path.join(root, f))
+        
+        if not chunks:
+            print('No tsf chunks found in zip!')
+            return None
+
+        # Sort chunks numerically
+        def get_num(f):
+            m = re.search(r'\d+', os.path.basename(f))
+            return int(m.group()) if m else 0
+        chunks.sort(key=get_num)
+        
+        ts_output = f'{name}.ts'
+        with open(ts_output, 'wb') as outfile:
+            for chunk_file in chunks:
+                with open(chunk_file, 'rb') as infile:
+                    data = infile.read()
+                    if key:
+                        data = decrypt_chunk(data, key)
+                    outfile.write(data)
+        
+        mp4_output = f'{name}.mp4'
+        subprocess.run(f'ffmpeg -i "{ts_output}" -c copy "{mp4_output}"', shell=True)
+        
+        if os.path.exists(ts_output): os.remove(ts_output)
+        return mp4_output
+    except Exception as e:
+        print(f'Zip extraction error: {e}')
+        return None
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
 async def download_and_decrypt_video(url, cmd, name, key, referer=""):
     if "encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url:
-        output_path = f"{name}.mp4"
+        is_zip = ".zip" in url
+        output_path = f"{name}.zip" if is_zip else f"{name}.mp4"
         if ".mkv" in url:
             output_path = f"{name}.mkv"
         print(f"Using curl_cffi for direct download: {url}")
@@ -309,14 +363,24 @@ async def download_and_decrypt_video(url, cmd, name, key, referer=""):
             print("Direct download failed. Falling back...")
             video_path = await download_video(url, cmd, name)
     else:
-        video_path = await download_video(url, cmd, name)  
-    
-    if video_path:  
-        decrypted = decrypt_file(video_path, key)  
-        if decrypted:  
-            print(f"File {video_path} decrypted successfully.")  
-            return video_path  
-        else:  
+        video_path = await download_video(url, cmd, name)
+
+    if video_path:
+        if video_path.endswith('.zip') or ".zip" in url:
+            # Handle Appx zipped tsf chunks
+            print(f"Extracting and decrypting chunks from {video_path}...")
+            mp4_path = await asyncio.to_thread(handle_zip_video, video_path, name, key)
+            if os.path.exists(video_path): os.remove(video_path)
+            if mp4_path:
+                print(f"Zip {video_path} converted to mp4 successfully.")
+                return mp4_path
+            return None
+
+        decrypted = decrypt_file(video_path, key)
+        if decrypted:
+            print(f"File {video_path} decrypted successfully.")
+            return video_path
+        else:
             print(f"Failed to decrypt {video_path}.")  
             return None  
 
