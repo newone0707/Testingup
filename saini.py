@@ -478,6 +478,8 @@ def get_appx_true_cipher(url, appxtoken):
     try:
         import requests
         from Crypto.Cipher import AES
+        import base64
+        import json
         m1 = re.search(r'videos/([^/]+)-data/', url)
         m2 = re.search(r'/(\d+)-(\d+)/', url)
         if not m1 or not m2:
