@@ -333,7 +333,7 @@ def handle_zip_video(zip_path, name, key):
         chunks = []
         for root, _, files in os.walk(temp_dir):
             for f in files:
-                if f.endswith('.tsf') or f.endswith('.ts') or f.endswith('.m4s'):
+                if f.endswith('.tsf') or f.endswith('.ts') or f.endswith('.m4s') or f.endswith('.tsa') or f.endswith('.tsv') or f.endswith('.txt'):
                     chunks.append(os.path.join(root, f))
         
         if not chunks:
