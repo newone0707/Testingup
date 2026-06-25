@@ -342,8 +342,8 @@ def handle_zip_video(zip_path, name, key):
 
         # Sort chunks numerically
         def get_num(f):
-            m = re.search(r'\d+', os.path.basename(f))
-            return int(m.group()) if m else 0
+            nums = re.findall(r'\d+', os.path.basename(f))
+            return int(nums[-1]) if nums else 0
         chunks.sort(key=get_num)
         
         ts_output = f'{name}.ts'
