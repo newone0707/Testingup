@@ -351,7 +351,7 @@ def decode_video_tsd(input_string):
     binary_data = base64.b64decode(result)
     return binary_data
 
-def handle_zip_video(zip_path, name, key):
+def handle_zip_video(zip_path, name, key, cipher=None):
     temp_dir = f'{name}_temp'
     os.makedirs(temp_dir, exist_ok=True)
     try:
@@ -445,10 +445,80 @@ def handle_zip_video(zip_path, name, key):
         print(f'Zip extraction error: {e}')
         return None
     finally:
+        import shutil
+        import base64
+        import json
+        import hashlib
+
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-async def download_and_decrypt_video(url, cmd, name, key, referer=""):
+def get_data_enc_key(time_val, token):
+    try:
+        n = time_val[-4:]
+        r = int(n[0])
+        i = int(n[1:3])
+        o = int(n[3])
+        a = time_val + token[r:i]
+        s = hashlib.sha256()
+        s.update(a.encode('utf-8'))
+        c = s.digest()
+        if o == 6:
+            sign = c[:16]
+        elif o == 7:
+            sign = c[:24]
+        else:
+            sign = c[:32]
+        return sign
+    except Exception as e:
+        print(f"Error deriving AES key: {e}")
+        return None
+
+def get_appx_true_cipher(url, appxtoken):
+    try:
+        import requests
+        from Crypto.Cipher import AES
+        m1 = re.search(r'videos/([^/]+)-data/', url)
+        m2 = re.search(r'/(\d+)-(\d+)/', url)
+        if not m1 or not m2:
+            return None
+        
+        prefix = m1.group(1).replace('-', '')
+        host = f"https://{prefix}api.classx.co.in"
+        cid, vid = m2.groups()
+        
+        payload = appxtoken.split('.')[1]
+        payload += '=' * (-len(payload) % 4)
+        decoded = base64.b64decode(payload).decode('utf-8')
+        user_id = json.loads(decoded).get('id')
+        if not user_id: return None
+        
+        headers = {
+            "Authorization": appxtoken,
+            "User-Agent": "Mozilla/5.0",
+            "Origin": f"https://{prefix}.classx.co.in",
+            "Host": f"{prefix}api.classx.co.in",
+            "Auth-Key": "appxapi",
+            "content-type": "application/x-www-form-urlencoded"
+        }
+        data = f"user_id={user_id}&course_id={cid}&live_course_id={vid}&ytFlag=0&folder_wise_course=1"
+        resp = requests.post(host + "/post/watch_videov2", data=data, headers=headers)
+        if resp.status_code == 200:
+            res_data = resp.json().get('data', {})
+            kstr = res_data.get('kstr')
+            ivb6 = res_data.get('ivb6')
+            dt = res_data.get('datetime')
+            tk = res_data.get('token')
+            if kstr and ivb6 and dt and tk:
+                key = get_data_enc_key(dt, tk)
+                iv = base64.b64decode(ivb6)
+                if key and iv:
+                    return AES.new(key, AES.MODE_CBC, iv)
+    except Exception as e:
+        print(f"Failed to fetch AppX True Cipher: {e}")
+    return None
+
+async def download_and_decrypt_video(url, cmd, name, key, referer="", appxtoken=None):
     if not key:
         m = re.search(r'encrypted-([a-fA-F0-9]+)', url)
         if m:
@@ -473,7 +543,8 @@ async def download_and_decrypt_video(url, cmd, name, key, referer=""):
         if video_path.endswith('.zip') or ".zip" in url:
             # Handle Appx zipped tsf chunks
             print(f"Extracting and decrypting chunks from {video_path}...")
-            mp4_path = await asyncio.to_thread(handle_zip_video, video_path, name, key)
+            cipher = get_appx_true_cipher(url, appxtoken) if appxtoken else None
+            mp4_path = await asyncio.to_thread(handle_zip_video, video_path, name, key, cipher)
             if os.path.exists(video_path): os.remove(video_path)
             if mp4_path:
                 print(f"Zip {video_path} converted to mp4 successfully.")
