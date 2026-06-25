@@ -329,6 +329,19 @@ def handle_zip_video(zip_path, name, key):
     try:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
+            
+            # Check for AES-128 IV in m3u8
+            aes_iv = None
+            for f in zip_ref.namelist():
+                if f.endswith('.m3u8'):
+                    try:
+                        content = zip_ref.read(f).decode('utf-8', errors='ignore')
+                        if 'METHOD=AES-128' in content:
+                            match = re.search(r'IV=0x([a-fA-F0-9]+)', content)
+                            if match:
+                                aes_iv = bytes.fromhex(match.group(1))
+                    except:
+                        pass
         
         chunks = []
         for root, _, files in os.walk(temp_dir):
@@ -346,12 +359,35 @@ def handle_zip_video(zip_path, name, key):
             return int(nums[-1]) if nums else 0
         chunks.sort(key=get_num)
         
+        # Prepare AES cipher if needed
+        cipher = None
+        if aes_iv and key:
+            key_bytes = key.encode('utf-8') if isinstance(key, str) else key
+            if len(key_bytes) > 16:
+                key_bytes = key_bytes[:16]
+            elif len(key_bytes) < 16:
+                key_bytes = key_bytes.ljust(16, b'\0')
+            try:
+                from Crypto.Cipher import AES
+                cipher = AES.new(key_bytes, AES.MODE_CBC, aes_iv)
+            except Exception as e:
+                print(f"Failed to init AES: {e}")
+        
         ts_output = f'{name}.ts'
         with open(ts_output, 'wb') as outfile:
             for chunk_file in chunks:
                 with open(chunk_file, 'rb') as infile:
                     data = infile.read()
-                    if key:
+                    if cipher:
+                        try:
+                            # AES chunks must be multiple of 16
+                            pad_len = len(data) % 16
+                            if pad_len != 0:
+                                data += b'\0' * (16 - pad_len)
+                            data = cipher.decrypt(data)
+                        except Exception as e:
+                            print(f"AES Decrypt error: {e}")
+                    elif key:
                         data = decrypt_chunk(data, key)
                     outfile.write(data)
         
