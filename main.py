@@ -426,8 +426,9 @@ async def txt_handler(bot: Client, m: Message):
  
     try:
         for i in range(arg-1, len(links)):  # Iterate over each link
+            appxkey = ""
             if cancel_requested:
-                await m.reply_text("🚦**STOPPED**🚦")
+                await m.reply_text("dYs**STOPPED**dYs")
                 processing_request = False
                 cancel_requested = False
                 return
@@ -1159,6 +1160,7 @@ async def txt_handler(bot: Client, m: Message):
     arg = int(raw_text)
     try:
         for i in range(arg-1, len(links)):
+            appxkey = ""
             if cancel_requested:
                 await m.reply_text("🚦**STOPPED**🚦")
                 processing_request = False
