@@ -335,6 +335,22 @@ def decrypt_chunk(data, key_str):
         data_bytearray[i] ^= key[i] if i < len(key) else i
     return bytes(data_bytearray)
 
+def decode_video_tsd(input_string):
+    import base64
+    shift_value = 0x2
+    result = ''
+    for char in input_string:
+        char_code = ord(char)
+        shifted_result = char_code >> shift_value
+        result += chr(shifted_result)
+    
+    padding = len(result) % 4
+    if padding != 0:
+        result += '=' * (4 - padding)
+        
+    binary_data = base64.b64decode(result)
+    return binary_data
+
 def handle_zip_video(zip_path, name, key):
     temp_dir = f'{name}_temp'
     os.makedirs(temp_dir, exist_ok=True)
@@ -390,6 +406,15 @@ def handle_zip_video(zip_path, name, key):
             for chunk_file in chunks:
                 with open(chunk_file, 'rb') as infile:
                     data = infile.read()
+                    
+                    if chunk_file.endswith('.tsd'):
+                        try:
+                            # Try to decode as UTF-8 Base64 shifted format
+                            text_data = data.decode('utf-8', errors='ignore')
+                            data = decode_video_tsd(text_data)
+                        except Exception as e:
+                            print(f"TSD Decode error: {e}")
+                            
                     if cipher:
                         try:
                             # AES chunks must be multiple of 16
