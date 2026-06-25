@@ -303,15 +303,27 @@ def sync_download(url, output_path, referer):
     try:
         ref_header = referer + "/" if referer and not referer.endswith("/") else referer
         origin_header = referer[:-1] if referer and referer.endswith("/") else referer
-        r = cffi_requests.get(url, stream=True, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': ref_header, 'Origin': origin_header}, impersonate="chrome", timeout=None)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': ref_header, 'Origin': origin_header}
+        r = cffi_requests.get(url, stream=True, headers=headers, impersonate="chrome", timeout=None)
         r.raise_for_status()
         with open(output_path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
         return True
     except Exception as e:
-        print(f"Direct Download Error: {e}")
-        return False
+        print(f"Direct Download curl_cffi Error: {e}")
+        try:
+            print("Falling back to standard requests...")
+            import requests
+            r2 = requests.get(url, stream=True, headers=headers, timeout=None)
+            r2.raise_for_status()
+            with open(output_path, 'wb') as f:
+                for chunk in r2.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            return True
+        except Exception as e2:
+            print(f"Standard requests failed: {e2}")
+            return False
 
 def decrypt_chunk(data, key_str):
     key = get_key_bytes(key_str)
@@ -346,7 +358,7 @@ def handle_zip_video(zip_path, name, key):
         chunks = []
         for root, _, files in os.walk(temp_dir):
             for f in files:
-                if f.endswith('.tsf') or f.endswith('.ts') or f.endswith('.m4s') or f.endswith('.tsa') or f.endswith('.tsv') or f.endswith('.txt'):
+                if not f.endswith('.m3u8') and not f.endswith('.key') and not f.endswith('.json'):
                     chunks.append(os.path.join(root, f))
         
         if not chunks:
