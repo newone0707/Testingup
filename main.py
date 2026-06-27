@@ -1213,8 +1213,7 @@ async def txt_handler(bot: Client, m: Message):
                         if "contentId=" in url:
                             cid = url.split("contentId=")[1].split("&")[0]
                             res = requests.get(
-                                "https://api.classplusapp.com/cams/uploader/video/jw-signed-url", 
-                                params={"contentId": cid, "offlineDownload": "false"}, 
+                                f"https://api.classplusapp.com/cams/uploader/video/jw-signed-url?contentId={cid}&offlineDownload=false",
                                 headers={
                                     "x-access-token": cptoken, 
                                     "host": "api.classplusapp.com", 
