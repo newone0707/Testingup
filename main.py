@@ -1210,29 +1210,43 @@ async def txt_handler(bot: Client, m: Message):
                     if cptoken and cptoken != "cptoken":
                         url = url.replace("https://cpvod.testbook.com/","https://media-cdn.classplusapp.com/drm/")
                         import requests
+                        headers_cp = {
+                            "x-access-token": cptoken, 
+                            "host": "api.classplusapp.com", 
+                            "app-version": "1.4.73.2", 
+                            "device-id": "c28d3cb16bbdac01", 
+                            "user-agent": "Mobile-Android",
+                            "api-version": "18",
+                            "accept-language": "EN"
+                        }
                         if "contentId=" in url:
                             cid = url.split("contentId=")[1].split("&")[0]
-                            res = requests.get(
+                            res_resp = requests.get(
                                 "https://api.classplusapp.com/cams/uploader/video/jw-signed-url", 
                                 params={"contentId": cid, "offlineDownload": "false"}, 
-                                headers={
-                                    "x-access-token": cptoken, 
-                                    "host": "api.classplusapp.com", 
-                                    "app-version": "1.4.73.2", 
-                                    "device-id": "c28d3cb16bbdac01", 
-                                    "user-agent": "Mobile-Android"
-                                }
-                            ).json()
+                                headers=headers_cp
+                            )
+                            res = res_resp.json()
                             if "url" in res: 
                                 url = res["url"]
                             elif "drmUrls" in res: 
                                 url = res["drmUrls"]["manifestUrl"]
+                            else:
+                                print(f"Classplus API Error (contentId): {res_resp.text}")
                         else:
-                            res = requests.get(f'https://api.classplusapp.com/cams/uploader/video/jw-signed-url?url={url}', headers={'x-access-token': f'{cptoken}'}).json()
+                            res_resp = requests.get(
+                                "https://api.classplusapp.com/cams/uploader/video/jw-signed-url", 
+                                params={"url": url}, 
+                                headers=headers_cp
+                            )
+                            res = res_resp.json()
                             if "url" in res: 
                                 url = res["url"]
+                            else:
+                                print(f"Classplus API Error (url): {res_resp.text}")
                 except Exception as e:
                     print(f"Classplus batch API failed: {e}")
+
 
 
             if "edge.api.brightcove.com" in url:
