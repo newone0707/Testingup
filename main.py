@@ -1241,6 +1241,8 @@ async def txt_handler(bot: Client, m: Message):
                             ).json()
                             if "url" in res: 
                                 url = res["url"]
+                            elif "drmUrls" in res and "manifestUrl" in res["drmUrls"]:
+                                url = res["drmUrls"]["manifestUrl"]
                             else:
                                 print(f"Classplus API Error (url): {res}")
                 except Exception as e:
