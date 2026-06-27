@@ -1231,7 +1231,13 @@ async def txt_handler(bot: Client, m: Message):
                         else:
                             res = requests.get(
                                 f'https://api.classplusapp.com/cams/uploader/video/jw-signed-url?url={url}', 
-                                headers={'x-access-token': f'{cptoken}'}
+                                headers={
+                                    "x-access-token": cptoken, 
+                                    "host": "api.classplusapp.com", 
+                                    "app-version": "1.4.73.2", 
+                                    "device-id": "c28d3cb16bbdac01", 
+                                    "user-agent": "Mobile-Android"
+                                }
                             ).json()
                             if "url" in res: 
                                 url = res["url"]
