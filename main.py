@@ -1274,10 +1274,14 @@ async def txt_handler(bot: Client, m: Message):
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
             elif "webvideos.classplusapp." in url:
                cmd = f'yt-dlp --add-header "referer:https://web.classplusapp.com/" --add-header "x-cdn-tag:empty" -f "{ytf}" "{url}" -o "{name}.mp4"'
-            elif "classx.co.in" in url or "appx.co.in" in url:
+            elif "appx.co.in" in url:
                 origin_url = "https://appx.co.in"
                 ref_header = "https://appx.co.in/"
                 cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'
+            elif "classx.co.in" in url:
+                ref_header = global_referer
+                origin_url = global_referer.rstrip('/')
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'  
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
@@ -1491,7 +1495,7 @@ async def txt_handler(bot: Client, m: Message):
                         await asyncio.sleep(1)
                         continue
 
-                    appx_referer = "https://appx.co.in/" if ("appx" in url or "classx" in url) else global_referer
+                    appx_referer = "https://appx.co.in/" if ("appx.co.in" in url) else global_referer
                     res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey, appx_referer)
                     if not res_file or not os.path.exists(res_file):
                         try:
@@ -1759,10 +1763,14 @@ async def text_handler(bot: Client, m: Message):
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
             elif "webvideos.classplusapp." in url:
                cmd = f'yt-dlp --add-header "referer:https://web.classplusapp.com/" --add-header "x-cdn-tag:empty" -f "{ytf}" "{url}" -o "{name}.mp4"'
-            elif "classx.co.in" in url or "appx.co.in" in url:
+            elif "appx.co.in" in url:
                 origin_url = "https://appx.co.in"
                 ref_header = "https://appx.co.in/"
                 cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'
+            elif "classx.co.in" in url:
+                ref_header = global_referer
+                origin_url = global_referer.rstrip('/')
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'  
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
@@ -1894,7 +1902,7 @@ async def text_handler(bot: Client, m: Message):
                         await asyncio.sleep(1)
                         return
 
-                    appx_referer = "https://appx.co.in/" if ("appx" in url or "classx" in url) else global_referer
+                    appx_referer = "https://appx.co.in/" if ("appx.co.in" in url) else global_referer
                     res_file = await helper.download_and_decrypt_video(url, cmd, name, appxkey, appx_referer)
                     filename = res_file
                     try:
