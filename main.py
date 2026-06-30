@@ -1281,7 +1281,7 @@ async def txt_handler(bot: Client, m: Message):
             elif "classx.co.in" in url:
                 ref_header = global_referer
                 origin_url = global_referer.rstrip('/')
-                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'  
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" --merge-output-format mp4 -f "{ytf}" "{url}" -o "{name}.mp4"'  
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
@@ -1770,7 +1770,7 @@ async def text_handler(bot: Client, m: Message):
             elif "classx.co.in" in url:
                 ref_header = global_referer
                 origin_url = global_referer.rstrip('/')
-                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'  
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" --merge-output-format mp4 -f "{ytf}" "{url}" -o "{name}.mp4"'  
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
