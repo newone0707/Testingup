@@ -1257,9 +1257,10 @@ async def txt_handler(bot: Client, m: Message):
             elif '*' in url and ('encrypted.m' in url or 'appx' in url or 'classx' in url):
                 parts = url.split('*')
                 url = parts[0].strip()
-                if len(parts) >= 4:
+                if len(parts) == 4 or len(parts) == 2:
                     appxkey = parts[1].strip()
                 else:
+                    # len(parts) == 3 means it's URL*COURSE_ID*FI, so no key
                     appxkey = ""
 
             if "youtu" in url:
@@ -1741,7 +1742,7 @@ async def text_handler(bot: Client, m: Message):
             elif '*' in url and ('encrypted.m' in url or 'appx' in url or 'classx' in url):
                 parts = url.split('*')
                 url = parts[0].strip()
-                if len(parts) >= 4:
+                if len(parts) == 4 or len(parts) == 2:
                     appxkey = parts[1].strip()
                 else:
                     appxkey = ""
