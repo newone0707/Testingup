@@ -1460,7 +1460,7 @@ async def txt_handler(bot: Client, m: Message):
                         time.sleep(e.x)
                         continue    
                     
-                elif 'encrypted.m' in url or 'appx' in url or 'classx' in url or 'encrypted' in url:    
+                elif 'encrypted.m' in url or 'appx' in url or ('classx' in url and '.m3u8' not in url) or 'encrypted' in url:    
                     remaining_links = len(links) - count
                     progress = (count / len(links)) * 100
                     Show1 = f"<blockquote>🚀𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬 » {progress:.2f}%</blockquote>\n┃\n" \
@@ -1883,7 +1883,7 @@ async def text_handler(bot: Client, m: Message):
                         time.sleep(e.x)
                         pass
                                 
-                elif 'encrypted.m' in url or 'appx' in url or 'classx' in url or 'encrypted' in url:    
+                elif 'encrypted.m' in url or 'appx' in url or ('classx' in url and '.m3u8' not in url) or 'encrypted' in url:    
                     Show = f"**⚡Dᴏᴡɴʟᴏᴀᴅɪɴɢ Sᴛᴀʀᴛᴇᴅ...⏳**\n" \
                            f"<blockquote expandable>🔗𝐋𝐢𝐧𝐤 » {url}</blockquote>\n" \
                            f"✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}"
