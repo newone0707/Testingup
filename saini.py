@@ -248,16 +248,16 @@ async def download_video(url,cmd, name):
         elif os.path.isfile(f"{name}.webm"):
             return f"{name}.webm"
         name = name.split(".")[0]
-        if os.path.isfile(f"{name}.mkv"):
-            return f"{name}.mkv"
-        elif os.path.isfile(f"{name}.mp4"):
+        if os.path.isfile(f"{name}.mp4"):
             return f"{name}.mp4"
+        elif os.path.isfile(f"{name}.mkv"):
+            return f"{name}.mkv"
         elif os.path.isfile(f"{name}.mp4.webm"):
             return f"{name}.mp4.webm"
 
-        return name
+        return None
     except FileNotFoundError as exc:
-        return os.path.isfile.splitext[0] + "." + "mp4"
+        return None
 
 
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
@@ -303,27 +303,15 @@ def sync_download(url, output_path, referer):
     try:
         ref_header = referer + "/" if referer and not referer.endswith("/") else referer
         origin_header = referer[:-1] if referer and referer.endswith("/") else referer
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': ref_header, 'Origin': origin_header}
-        r = cffi_requests.get(url, stream=True, headers=headers, impersonate="chrome", timeout=None)
+        r = cffi_requests.get(url, stream=True, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': ref_header, 'Origin': origin_header}, impersonate="chrome")
         r.raise_for_status()
         with open(output_path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
         return True
     except Exception as e:
-        print(f"Direct Download curl_cffi Error: {e}")
-        try:
-            print("Falling back to standard requests...")
-            import requests
-            r2 = requests.get(url, stream=True, headers=headers, timeout=None)
-            r2.raise_for_status()
-            with open(output_path, 'wb') as f:
-                for chunk in r2.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            return True
-        except Exception as e2:
-            print(f"Standard requests failed: {e2}")
-            return False
+        print(f"Direct Download Error: {e}")
+        return False
 
 def decrypt_chunk(data, key_str):
     key = get_key_bytes(key_str)
@@ -335,46 +323,17 @@ def decrypt_chunk(data, key_str):
         data_bytearray[i] ^= key[i] if i < len(key) else i
     return bytes(data_bytearray)
 
-def decode_video_tsd(input_string):
-    import base64
-    shift_value = 0x2
-    result = ''
-    for char in input_string:
-        char_code = ord(char)
-        shifted_result = char_code >> shift_value
-        result += chr(shifted_result)
-    
-    padding = len(result) % 4
-    if padding != 0:
-        result += '=' * (4 - padding)
-        
-    binary_data = base64.b64decode(result)
-    return binary_data
-
-def handle_zip_video(zip_path, name, key, cipher=None):
+def handle_zip_video(zip_path, name, key):
     temp_dir = f'{name}_temp'
     os.makedirs(temp_dir, exist_ok=True)
     try:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
-            
-            # Check for AES-128 IV in m3u8
-            aes_iv = None
-            for f in zip_ref.namelist():
-                if f.endswith('.m3u8'):
-                    try:
-                        content = zip_ref.read(f).decode('utf-8', errors='ignore')
-                        if 'METHOD=AES-128' in content:
-                            match = re.search(r'IV=0x([a-fA-F0-9]+)', content)
-                            if match:
-                                aes_iv = bytes.fromhex(match.group(1))
-                    except:
-                        pass
         
         chunks = []
         for root, _, files in os.walk(temp_dir):
             for f in files:
-                if not f.endswith('.m3u8') and not f.endswith('.key') and not f.endswith('.json'):
+                if f.endswith('.tsf') or f.endswith('.ts') or f.endswith('.m4s'):
                     chunks.append(os.path.join(root, f))
         
         if not chunks:
@@ -383,48 +342,16 @@ def handle_zip_video(zip_path, name, key, cipher=None):
 
         # Sort chunks numerically
         def get_num(f):
-            nums = re.findall(r'\d+', os.path.basename(f))
-            return int(nums[-1]) if nums else 0
+            m = re.search(r'\d+', os.path.basename(f))
+            return int(m.group()) if m else 0
         chunks.sort(key=get_num)
-        
-        # Prepare AES cipher if needed
-        cipher = None
-        if aes_iv and key:
-            key_bytes = key.encode('utf-8') if isinstance(key, str) else key
-            if len(key_bytes) > 16:
-                key_bytes = key_bytes[:16]
-            elif len(key_bytes) < 16:
-                key_bytes = key_bytes.ljust(16, b'\0')
-            try:
-                from Crypto.Cipher import AES
-                cipher = AES.new(key_bytes, AES.MODE_CBC, aes_iv)
-            except Exception as e:
-                print(f"Failed to init AES: {e}")
         
         ts_output = f'{name}.ts'
         with open(ts_output, 'wb') as outfile:
             for chunk_file in chunks:
                 with open(chunk_file, 'rb') as infile:
                     data = infile.read()
-                    
-                    if chunk_file.endswith('.tsd'):
-                        try:
-                            # Try to decode as UTF-8 Base64 shifted format
-                            text_data = data.decode('utf-8', errors='ignore')
-                            data = decode_video_tsd(text_data)
-                        except Exception as e:
-                            print(f"TSD Decode error: {e}")
-                            
-                    if cipher:
-                        try:
-                            # AES chunks must be multiple of 16
-                            pad_len = len(data) % 16
-                            if pad_len != 0:
-                                data += b'\0' * (16 - pad_len)
-                            data = cipher.decrypt(data)
-                        except Exception as e:
-                            print(f"AES Decrypt error: {e}")
-                    elif key:
+                    if key:
                         data = decrypt_chunk(data, key)
                     outfile.write(data)
         
@@ -445,88 +372,16 @@ def handle_zip_video(zip_path, name, key, cipher=None):
         print(f'Zip extraction error: {e}')
         return None
     finally:
-        import shutil
-        import base64
-        import json
-        import hashlib
-
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-def get_data_enc_key(time_val, token):
-    try:
-        n = time_val[-4:]
-        r = int(n[0])
-        i = int(n[1:3])
-        o = int(n[3])
-        a = time_val + token[r:i]
-        s = hashlib.sha256()
-        s.update(a.encode('utf-8'))
-        c = s.digest()
-        if o == 6:
-            sign = c[:16]
-        elif o == 7:
-            sign = c[:24]
-        else:
-            sign = c[:32]
-        return sign
-    except Exception as e:
-        print(f"Error deriving AES key: {e}")
-        return None
-
-def get_appx_true_cipher(url, appxtoken):
-    try:
-        import requests
-        from Crypto.Cipher import AES
-        import base64
-        import json
-        m1 = re.search(r'videos/([^/]+)-data/', url)
-        m2 = re.search(r'/(\d+)-(\d+)/', url)
-        if not m1 or not m2:
-            return None
-        
-        prefix = m1.group(1).replace('-', '')
-        host = f"https://{prefix}api.classx.co.in"
-        cid, vid = m2.groups()
-        
-        payload = appxtoken.split('.')[1]
-        payload += '=' * (-len(payload) % 4)
-        decoded = base64.b64decode(payload).decode('utf-8')
-        user_id = json.loads(decoded).get('id')
-        if not user_id: return None
-        
-        headers = {
-            "Authorization": appxtoken,
-            "User-Agent": "Mozilla/5.0",
-            "Origin": f"https://{prefix}.classx.co.in",
-            "Host": f"{prefix}api.classx.co.in",
-            "Auth-Key": "appxapi",
-            "content-type": "application/x-www-form-urlencoded"
-        }
-        data = f"user_id={user_id}&course_id={cid}&live_course_id={vid}&ytFlag=0&folder_wise_course=1"
-        resp = requests.post(host + "/post/watch_videov2", data=data, headers=headers)
-        if resp.status_code == 200:
-            res_data = resp.json().get('data', {})
-            kstr = res_data.get('kstr')
-            ivb6 = res_data.get('ivb6')
-            dt = res_data.get('datetime')
-            tk = res_data.get('token')
-            if kstr and ivb6 and dt and tk:
-                key = get_data_enc_key(dt, tk)
-                iv = base64.b64decode(ivb6)
-                if key and iv:
-                    return AES.new(key, AES.MODE_CBC, iv)
-    except Exception as e:
-        print(f"Failed to fetch AppX True Cipher: {e}")
-    return None
-
-async def download_and_decrypt_video(url, cmd, name, key, referer="", appxtoken=None):
+async def download_and_decrypt_video(url, cmd, name, key, referer=""):
     if not key:
         m = re.search(r'encrypted-([a-fA-F0-9]+)', url)
         if m:
             key = m.group(1)
             
-    if "encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url:
+    if ("encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url) and not (".m3u8" in url or ".mpd" in url):
         is_zip = ".zip" in url
         output_path = f"{name}.zip" if is_zip else f"{name}.mp4"
         if ".mkv" in url:
@@ -537,7 +392,16 @@ async def download_and_decrypt_video(url, cmd, name, key, referer="", appxtoken=
             video_path = output_path
         else:
             print("Direct download failed. Falling back...")
-            video_path = await download_video(url, cmd, name)
+            if is_zip:
+                download_cmd = f'aria2c -x 16 -j 32 -s 16 -k 1M -o "{output_path}" "{url}"'
+                print(f"Downloading ZIP using aria2c: {download_cmd}")
+                os.system(download_cmd)
+                if os.path.exists(output_path):
+                    video_path = output_path
+                else:
+                    video_path = None
+            else:
+                video_path = await download_video(url, cmd, name)
     else:
         video_path = await download_video(url, cmd, name)
 
@@ -545,8 +409,7 @@ async def download_and_decrypt_video(url, cmd, name, key, referer="", appxtoken=
         if video_path.endswith('.zip') or ".zip" in url:
             # Handle Appx zipped tsf chunks
             print(f"Extracting and decrypting chunks from {video_path}...")
-            cipher = get_appx_true_cipher(url, appxtoken) if appxtoken else None
-            mp4_path = await asyncio.to_thread(handle_zip_video, video_path, name, key, cipher)
+            mp4_path = await asyncio.to_thread(handle_zip_video, video_path, name, key)
             if os.path.exists(video_path): os.remove(video_path)
             if mp4_path:
                 print(f"Zip {video_path} converted to mp4 successfully.")
