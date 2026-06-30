@@ -1254,7 +1254,7 @@ async def txt_handler(bot: Client, m: Message):
             if ".pdf*" in url:
                 url = f"https://dragoapi.vercel.app/pdf/{url}"
             
-            elif 'encrypted.m' in url:
+            elif '*' in url and ('encrypted.m' in url or 'appx' in url or 'classx' in url):
                 appxkey = url.split('*')[1].strip()
                 url = url.split('*')[0].strip()
 
@@ -1269,6 +1269,10 @@ async def txt_handler(bot: Client, m: Message):
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
             elif "webvideos.classplusapp." in url:
                cmd = f'yt-dlp --add-header "referer:https://web.classplusapp.com/" --add-header "x-cdn-tag:empty" -f "{ytf}" "{url}" -o "{name}.mp4"'
+            elif "classx.co.in" in url or "appx.co.in" in url:
+                origin_url = global_referer.rstrip('/') if 'global_referer' in locals() else ""
+                ref_header = global_referer if 'global_referer' in locals() else ""
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
@@ -1730,7 +1734,7 @@ async def text_handler(bot: Client, m: Message):
             if ".pdf*" in url:
                 url = f"https://dragoapi.vercel.app/pdf/{url}"
             
-            elif 'encrypted.m' in url:
+            elif '*' in url and ('encrypted.m' in url or 'appx' in url or 'classx' in url):
                 appxkey = url.split('*')[1].strip()
                 url = url.split('*')[0].strip()
 
@@ -1745,6 +1749,10 @@ async def text_handler(bot: Client, m: Message):
                 cmd = f'yt-dlp -o "{name}.mp4" "{url}"'
             elif "webvideos.classplusapp." in url:
                cmd = f'yt-dlp --add-header "referer:https://web.classplusapp.com/" --add-header "x-cdn-tag:empty" -f "{ytf}" "{url}" -o "{name}.mp4"'
+            elif "classx.co.in" in url or "appx.co.in" in url:
+                origin_url = global_referer.rstrip('/') if 'global_referer' in locals() else ""
+                ref_header = global_referer if 'global_referer' in locals() else ""
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
