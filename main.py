@@ -1600,6 +1600,14 @@ async def txt_handler(bot: Client, m: Message):
                         continue
 
                     res_file = await helper.download_video(url, cmd, name)
+                    if not res_file or not __import__('os').path.exists(res_file):
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        await bot.send_message(channel_id, f"⚠️**Downloading Failed (Link expired or yt-dlp error)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
+                        count += 1
+                        continue
                     filename = res_file
                     try:
                         await prog1.delete(True)
@@ -1971,6 +1979,14 @@ async def text_handler(bot: Client, m: Message):
                         return
 
                     res_file = await helper.download_video(url, cmd, name)
+                    if not res_file or not __import__('os').path.exists(res_file):
+                        try:
+                            await prog1.delete(True)
+                            await prog.delete(True)
+                        except: pass
+                        await bot.send_message(channel_id, f"⚠️**Downloading Failed (Link expired or yt-dlp error)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
+                        count += 1
+                        continue
                     filename = res_file
                     try:
                         await prog1.delete(True)
