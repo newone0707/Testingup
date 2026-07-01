@@ -236,7 +236,11 @@ async def download_video(url,cmd, name):
     global failed_counter
     print(download_cmd)
     logging.info(download_cmd)
-    k = subprocess.run(download_cmd, shell=True)
+    k = subprocess.run(download_cmd, shell=True, capture_output=True, text=True)
+    if k.returncode != 0:
+        print(f"YT-DLP ERROR: {k.stderr}")
+        with open("last_dl_error.txt", "w", encoding="utf-8") as f:
+            f.write(str(k.stderr)[-500:])
     if "visionias" in cmd and k.returncode != 0 and failed_counter <= 10:
         failed_counter += 1
         await asyncio.sleep(5)
