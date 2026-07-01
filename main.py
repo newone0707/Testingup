@@ -1783,7 +1783,7 @@ async def text_handler(bot: Client, m: Message):
                cmd = f'yt-dlp --add-header "referer:https://web.classplusapp.com/" --add-header "x-cdn-tag:empty" -f "{ytf}" "{url}" -o "{name}.mp4"'
             elif "appx.co.in" in url:
                 ref_header = global_referer
-                origin_url = global_referer.rstrip(/)
+                origin_url = global_referer.rstrip('/')
                 cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" -f "{ytf}" "{url}" -o "{name}.mp4"'
             elif "classx.co.in" in url:
                 ref_header = global_referer
