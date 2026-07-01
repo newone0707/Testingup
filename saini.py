@@ -376,7 +376,7 @@ def handle_zip_video(zip_path, name, key):
             shutil.rmtree(temp_dir)
 
 async def download_and_decrypt_video(url, cmd, name, key, referer=""):
-    if not key or (isinstance(key, str) and key.isdigit()):
+    if not key:
         m = re.search(r'encrypted-([a-fA-F0-9]+)', url)
         if m:
             key = m.group(1)
