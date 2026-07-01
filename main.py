@@ -1502,7 +1502,12 @@ async def txt_handler(bot: Client, m: Message):
                             await prog1.delete(True)
                             await prog.delete(True)
                         except: pass
-                        await m.reply_text(f"⚠️**Downloading Failed (Link expired or invalid)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
+                        err_msg = ""
+                        try:
+                            with open("last_dl_error.txt", "r", encoding="utf-8") as f:
+                                err_msg = f.read()
+                        except: pass
+                        await m.reply_text(f"⚠️**Downloading Failed**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Error** =>> {err_msg}\n**Url** =>> {link0}", disable_web_page_preview=True)
                         count += 1
                         continue
                     
@@ -1605,7 +1610,12 @@ async def txt_handler(bot: Client, m: Message):
                             await prog1.delete(True)
                             await prog.delete(True)
                         except: pass
-                        await bot.send_message(channel_id, f"⚠️**Downloading Failed (Link expired or yt-dlp error)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
+                        err_msg = ""
+                        try:
+                            with open("last_dl_error.txt", "r", encoding="utf-8") as f:
+                                err_msg = f.read()
+                        except: pass
+                        await bot.send_message(channel_id, f"⚠️**Downloading Failed**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Error** =>> {err_msg}\n**Url** =>> {link0}", disable_web_page_preview=True)
                         count += 1
                         continue
                     filename = res_file
@@ -1984,7 +1994,12 @@ async def text_handler(bot: Client, m: Message):
                             await prog1.delete(True)
                             await prog.delete(True)
                         except: pass
-                        await bot.send_message(channel_id, f"⚠️**Downloading Failed (Link expired or yt-dlp error)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
+                        err_msg = ""
+                        try:
+                            with open("last_dl_error.txt", "r", encoding="utf-8") as f:
+                                err_msg = f.read()
+                        except: pass
+                        await bot.send_message(channel_id, f"⚠️**Downloading Failed**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Error** =>> {err_msg}\n**Url** =>> {link0}", disable_web_page_preview=True)
                         count += 1
                         return
                     filename = res_file
