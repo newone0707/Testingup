@@ -1257,11 +1257,50 @@ async def txt_handler(bot: Client, m: Message):
             elif '*' in url and ('encrypted.m' in url or 'appx' in url or 'classx' in url):
                 parts = url.split('*')
                 url = parts[0].strip()
-                if len(parts) == 4 or len(parts) == 2:
+                appxkey = ""
+                # classx format: URL*size*course_id*video_id (4 parts)
+                # For classx, fetch fresh signed URL via API using course_id & video_id
+                if 'classx.co.in' in url and len(parts) == 4:
+                    try:
+                        cl_course_id = parts[2].strip()
+                        cl_video_id = parts[3].strip()
+                        # Extract tenant from global_referer e.g. https://beingdoctor.classx.co.in/ -> beingdoctor
+                        import re as _re
+                        tenant_match = _re.match(r'https?://([^.]+)\.classx\.co\.in', global_referer)
+                        cl_tenant = tenant_match.group(1) if tenant_match else 'beingdoctor'
+                        cl_api = f'https://{cl_tenant}api.classx.co.in/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag=0&folder_wise_course=0'
+                        cl_headers = {
+                            'Client-Service': 'Appx',
+                            'Auth-Key': 'appxapi',
+                            'User-ID': '0',
+                            'source': 'website',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                        }
+                        cl_resp = requests.get(cl_api, headers=cl_headers, timeout=15)
+                        if cl_resp.status_code == 200:
+                            cl_data = cl_resp.json().get('data', {})
+                            cl_dl = cl_data.get('download_link', '')
+                            if cl_dl:
+                                # decrypt the link
+                                from base64 import b64decode as _b64d
+                                import binascii as _bi
+                                try:
+                                    _raw = _b64d(cl_dl.split(':')[0])
+                                    _key = b'38346231323036383736313935313138'
+                                    _decrypted = bytes(b ^ k for b, k in zip(_raw, _key * (len(_raw) // len(_key) + 1))).decode('utf-8', errors='ignore').strip()
+                                    _decrypted = ''.join(c for c in _decrypted if c.isprintable())
+                                    if _decrypted.startswith('http'):
+                                        url = _decrypted
+                                        print(f'classx fresh URL: {url[:80]}')
+                                except Exception as _e:
+                                    print(f'classx decrypt error: {_e}')
+                    except Exception as cl_err:
+                        print(f'classx API error: {cl_err}')
+                elif len(parts) == 2:
                     appxkey = parts[1].strip()
-                else:
-                    # len(parts) == 3 means it's URL*COURSE_ID*FI, so no key
-                    appxkey = ""
+                # len 3 = URL*COURSE_ID*FI with no key, len 4 non-classx = URL*KEY*COURSE_ID*FI
+                elif len(parts) == 4 and 'classx.co.in' not in url:
+                    appxkey = parts[1].strip()
 
             if "youtu" in url:
                 ytf = f"bv*[height<={raw_text2}][ext=mp4]+ba[ext=m4a]/b[height<=?{raw_text2}]"
@@ -1281,7 +1320,9 @@ async def txt_handler(bot: Client, m: Message):
             elif "classx.co.in" in url:
                 ref_header = global_referer
                 origin_url = global_referer.rstrip('/')
-                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" --merge-output-format mp4 -f "{ytf}" "{url}" -o "{name}.mp4"'  
+                cmd = f'yt-dlp --add-header "Referer:{ref_header}" --add-header "Origin:{origin_url}" --merge-output-format mp4 -f "{ytf}" "{url}" -o "{name}.mp4"'
+                # fallback: also try direct download via saini sync_download
+                
             elif "youtube.com" in url or "youtu.be" in url:
                 cmd = f'yt-dlp --cookies youtube_cookies.txt -f "{ytf}" "{url}" -o "{name}".mp4'
             else:
