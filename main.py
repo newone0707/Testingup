@@ -1986,7 +1986,7 @@ async def text_handler(bot: Client, m: Message):
                         except: pass
                         await bot.send_message(channel_id, f"⚠️**Downloading Failed (Link expired or yt-dlp error)**⚠️\n**Name** =>> {str(count).zfill(3)} {name1}\n**Url** =>> {link0}", disable_web_page_preview=True)
                         count += 1
-                        continue
+                        return
                     filename = res_file
                     try:
                         await prog1.delete(True)
