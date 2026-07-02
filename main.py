@@ -1266,9 +1266,10 @@ async def txt_handler(bot: Client, m: Message):
                 parts = url.split('*')
                 url = parts[0].strip()
                 appxkey = ""
-                # classx format: URL*size*course_id*video_id (4 parts)
+                # classx format: URL*size/key*course_id*video_id (4 parts)
                 # For classx, fetch fresh signed URL via API using course_id & video_id
                 if 'classx.co.in' in url and len(parts) == 4:
+                    appxkey = parts[1].strip()
                     try:
                         cl_course_id = parts[2].strip()
                         cl_video_id = parts[3].strip()
