@@ -1283,7 +1283,6 @@ async def txt_handler(bot: Client, m: Message):
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                         }
                         if global_cl_token:
-                            cl_headers['Authorization'] = global_cl_token
                             cl_headers['token'] = global_cl_token
 
                         def _cl_aes_decrypt(enc_str: str) -> str:
