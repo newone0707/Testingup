@@ -299,7 +299,7 @@ def decrypt_file(file_path, key_str):
     if file_sz == 0:
         return False
 
-    num_bytes = min(2048, file_sz)
+    num_bytes = min(28, file_sz)
     with open(file_path, "r+b") as f:
         with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
             for i in range(num_bytes):
@@ -326,7 +326,7 @@ def decrypt_chunk(data, key_str):
     if not key:
         return data
     data_bytearray = bytearray(data)
-    num_bytes = min(2048, len(data_bytearray))
+    num_bytes = min(28, len(data_bytearray))
     for i in range(num_bytes):
         data_bytearray[i] ^= key[i % len(key)]
     return bytes(data_bytearray)
