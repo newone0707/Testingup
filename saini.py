@@ -299,7 +299,7 @@ def decrypt_file(file_path, key_str):
         num_bytes = min(28, os.path.getsize(file_path))
         with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
             for i in range(num_bytes):
-                mmapped_file[i] ^= key[i % len(key)]
+                mmapped_file[i] ^= key[i] if i < len(key) else i
     return True  
 
 def sync_download(url, output_path, referer):
@@ -324,7 +324,7 @@ def decrypt_chunk(data, key_str):
     data_bytearray = bytearray(data)
     num_bytes = min(28, len(data_bytearray))
     for i in range(num_bytes):
-        data_bytearray[i] ^= key[i % len(key)]
+        data_bytearray[i] ^= key[i] if i < len(key) else i
     return bytes(data_bytearray)
 
 def handle_zip_video(zip_path, name, key):
