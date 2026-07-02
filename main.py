@@ -369,7 +369,11 @@ async def txt_handler(bot: Client, m: Message):
             content = content.split("\n")
             links = []
             global_referer = "https://web.classplusapp.com/"
+            global_cl_token = ""  # classx/appx user auth token from Extractor
             for i in content:
+                if "Token:" in i and i.strip().startswith("Token:"):
+                    global_cl_token = i.split("Token:", 1)[1].strip()
+                    continue
                 if "BaseURL:" in i:
                     raw_base = i.split("BaseURL:")[1].strip()
                     import re
@@ -984,7 +988,11 @@ async def txt_handler(bot: Client, m: Message):
         
         links = []
         global_referer = "https://web.classplusapp.com/"
+        global_cl_token = ""  # classx/appx user auth token from Extractor
         for i in content:
+            if "Token:" in i and i.strip().startswith("Token:"):
+                global_cl_token = i.split("Token:", 1)[1].strip()
+                continue
             if "BaseURL:" in i:
                 raw_base = i.split("BaseURL:")[1].strip()
                 import re
@@ -1268,34 +1276,53 @@ async def txt_handler(bot: Client, m: Message):
                         import re as _re
                         tenant_match = _re.match(r'https?://([^.]+)\.classx\.co\.in', global_referer)
                         cl_tenant = tenant_match.group(1) if tenant_match else 'beingdoctor'
-                        cl_api = f'https://{cl_tenant}api.classx.co.in/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag=0&folder_wise_course=0'
+                        cl_api = f'https://{cl_tenant}api.classx.co.in/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag=0&folder_wise_course=1'
                         cl_headers = {
                             'Client-Service': 'Appx',
                             'Auth-Key': 'appxapi',
-                            'User-ID': '0',
                             'source': 'website',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                         }
+                        # Use token from .txt file if available
+                        if global_cl_token:
+                            cl_headers['Authorization'] = global_cl_token
+                            cl_headers['token'] = global_cl_token
                         cl_resp = requests.get(cl_api, headers=cl_headers, timeout=15)
+                        print(f'classx API status: {cl_resp.status_code} for video_id={cl_video_id}')
                         if cl_resp.status_code == 200:
                             cl_data = cl_resp.json().get('data', {})
-                            cl_dl = cl_data.get('download_link', '')
-                            if cl_dl:
-                                # decrypt the link
-                                from base64 import b64decode as _b64d
-                                import binascii as _bi
-                                try:
-                                    _raw = _b64d(cl_dl.split(':')[0])
-                                    _key = b'38346231323036383736313935313138'
-                                    _decrypted = bytes(b ^ k for b, k in zip(_raw, _key * (len(_raw) // len(_key) + 1))).decode('utf-8', errors='ignore').strip()
-                                    _decrypted = ''.join(c for c in _decrypted if c.isprintable())
-                                    if _decrypted.startswith('http'):
-                                        url = _decrypted
-                                        print(f'classx fresh URL: {url[:80]}')
-                                except Exception as _e:
-                                    print(f'classx decrypt error: {_e}')
+                            # Try encrypted_links first (direct signed URL)
+                            cl_enc_links = cl_data.get('encrypted_links', [])
+                            cl_fresh_url = ''
+                            if cl_enc_links:
+                                for cl_link in cl_enc_links:
+                                    cl_path = cl_link.get('path', '')
+                                    if cl_path and cl_path.startswith('http'):
+                                        cl_fresh_url = cl_path
+                                        break
+                            # Fallback: decrypt download_link
+                            if not cl_fresh_url:
+                                cl_dl = cl_data.get('download_link', '')
+                                if cl_dl:
+                                    try:
+                                        from base64 import b64decode as _b64d
+                                        _raw = _b64d(cl_dl.split(':')[0] + '==')
+                                        _key = b'38346231323036383736313935313138'
+                                        _dec = bytes(b ^ k for b, k in zip(_raw, _key * (len(_raw) // len(_key) + 1))).decode('utf-8', errors='ignore').strip()
+                                        _dec = ''.join(c for c in _dec if c.isprintable())
+                                        if _dec.startswith('http'):
+                                            cl_fresh_url = _dec
+                                    except Exception as _de:
+                                        print(f'classx decrypt error: {_de}')
+                            if cl_fresh_url:
+                                url = cl_fresh_url
+                                print(f'classx fresh URL obtained! video_id={cl_video_id}')
+                            else:
+                                print(f'classx API returned no URL for video_id={cl_video_id}')
+                        else:
+                            print(f'classx API error {cl_resp.status_code}: {cl_resp.text[:200]}')
                     except Exception as cl_err:
-                        print(f'classx API error: {cl_err}')
+                        print(f'classx API exception: {cl_err}')
                 elif len(parts) == 2:
                     appxkey = parts[1].strip()
                 # len 3 = URL*COURSE_ID*FI with no key, len 4 non-classx = URL*KEY*COURSE_ID*FI
