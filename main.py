@@ -369,7 +369,7 @@ async def txt_handler(bot: Client, m: Message):
             content = content.split("\n")
             links = []
             global_referer = "https://web.classplusapp.com/"
-            global_cl_token = ""  # classx/appx user auth token from Extractor
+            global_cl_token = ""  # classx/appx user token from Extractor
             for i in content:
                 if "Token:" in i and i.strip().startswith("Token:"):
                     global_cl_token = i.split("Token:", 1)[1].strip()
@@ -988,7 +988,7 @@ async def txt_handler(bot: Client, m: Message):
         
         links = []
         global_referer = "https://web.classplusapp.com/"
-        global_cl_token = ""  # classx/appx user auth token from Extractor
+        global_cl_token = ""  # classx/appx user token from Extractor
         for i in content:
             if "Token:" in i and i.strip().startswith("Token:"):
                 global_cl_token = i.split("Token:", 1)[1].strip()
@@ -1272,55 +1272,66 @@ async def txt_handler(bot: Client, m: Message):
                     try:
                         cl_course_id = parts[2].strip()
                         cl_video_id = parts[3].strip()
-                        # Extract tenant from global_referer e.g. https://beingdoctor.classx.co.in/ -> beingdoctor
                         import re as _re
                         tenant_match = _re.match(r'https?://([^.]+)\.classx\.co\.in', global_referer)
                         cl_tenant = tenant_match.group(1) if tenant_match else 'beingdoctor'
-                        cl_api = f'https://{cl_tenant}api.classx.co.in/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag=0&folder_wise_course=1'
                         cl_headers = {
                             'Client-Service': 'Appx',
                             'Auth-Key': 'appxapi',
                             'source': 'website',
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                         }
-                        # Use token from .txt file if available
                         if global_cl_token:
                             cl_headers['Authorization'] = global_cl_token
                             cl_headers['token'] = global_cl_token
-                        cl_resp = requests.get(cl_api, headers=cl_headers, timeout=15)
-                        print(f'classx API status: {cl_resp.status_code} for video_id={cl_video_id}')
-                        if cl_resp.status_code == 200:
-                            cl_data = cl_resp.json().get('data', {})
-                            # Try encrypted_links first (direct signed URL)
-                            cl_enc_links = cl_data.get('encrypted_links', [])
-                            cl_fresh_url = ''
-                            if cl_enc_links:
-                                for cl_link in cl_enc_links:
-                                    cl_path = cl_link.get('path', '')
-                                    if cl_path and cl_path.startswith('http'):
-                                        cl_fresh_url = cl_path
+                        print(f'classx token present: {bool(global_cl_token)} | tenant: {cl_tenant}')
+                        cl_fresh_url = ''
+                        for cl_ytflag in ['1', '0']:
+                            cl_api = f'https://{cl_tenant}api.classx.co.in/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag={cl_ytflag}&folder_wise_course=1'
+                            cl_resp = requests.get(cl_api, headers=cl_headers, timeout=15)
+                            print(f'classx API ytflag={cl_ytflag} status={cl_resp.status_code} vid={cl_video_id}')
+                            if cl_resp.status_code == 200:
+                                cl_json = cl_resp.json()
+                                cl_data = cl_json.get('data', {}) or {}
+                                print(f'classx data keys: {list(cl_data.keys())[:20]}')
+                                # 1. encrypted_links
+                                for cl_link in (cl_data.get('encrypted_links', []) or []):
+                                    cl_path = cl_link.get('path', '') if isinstance(cl_link, dict) else str(cl_link)
+                                    print(f'classx enc_link: {str(cl_path)[:100]}')
+                                    if cl_path and str(cl_path).startswith('http'):
+                                        cl_fresh_url = str(cl_path)
                                         break
-                            # Fallback: decrypt download_link
-                            if not cl_fresh_url:
-                                cl_dl = cl_data.get('download_link', '')
-                                if cl_dl:
-                                    try:
-                                        from base64 import b64decode as _b64d
-                                        _raw = _b64d(cl_dl.split(':')[0] + '==')
-                                        _key = b'38346231323036383736313935313138'
-                                        _dec = bytes(b ^ k for b, k in zip(_raw, _key * (len(_raw) // len(_key) + 1))).decode('utf-8', errors='ignore').strip()
-                                        _dec = ''.join(c for c in _dec if c.isprintable())
-                                        if _dec.startswith('http'):
-                                            cl_fresh_url = _dec
-                                    except Exception as _de:
-                                        print(f'classx decrypt error: {_de}')
-                            if cl_fresh_url:
-                                url = cl_fresh_url
-                                print(f'classx fresh URL obtained! video_id={cl_video_id}')
-                            else:
-                                print(f'classx API returned no URL for video_id={cl_video_id}')
+                                # 2. download_link (encrypted)
+                                if not cl_fresh_url:
+                                    cl_dl = cl_data.get('download_link', '') or ''
+                                    print(f'classx download_link: {str(cl_dl)[:80]}')
+                                    if cl_dl:
+                                        try:
+                                            from base64 import b64decode as _b64d
+                                            _raw = _b64d(cl_dl.split(':')[0] + '==')
+                                            _key = b'38346231323036383736313935313138'
+                                            _dec = bytes(b ^ k for b, k in zip(_raw, _key * (len(_raw)//len(_key)+1))).decode('utf-8', errors='ignore').strip()
+                                            _dec = ''.join(c for c in _dec if c.isprintable())
+                                            print(f'classx decrypted: {_dec[:100]}')
+                                            if _dec.startswith('http'):
+                                                cl_fresh_url = _dec
+                                        except Exception as _de:
+                                            print(f'classx decrypt err: {_de}')
+                                # 3. Any other url field
+                                if not cl_fresh_url:
+                                    for _fld in ['video_url','hls_url','stream_url','url','videoUrl','hls','src']:
+                                        _v = str(cl_data.get(_fld, '') or '')
+                                        if _v.startswith('http'):
+                                            cl_fresh_url = _v
+                                            print(f'classx URL from field [{_fld}]')
+                                            break
+                                if cl_fresh_url:
+                                    break
+                        if cl_fresh_url:
+                            url = cl_fresh_url
+                            print(f'classx fresh URL OK! vid={cl_video_id}')
                         else:
-                            print(f'classx API error {cl_resp.status_code}: {cl_resp.text[:200]}')
+                            print(f'classx NO URL found vid={cl_video_id} - using original signed URL')
                     except Exception as cl_err:
                         print(f'classx API exception: {cl_err}')
                 elif len(parts) == 2:
