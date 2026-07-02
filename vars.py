@@ -7,8 +7,8 @@ API_ID = int(environ.get("API_ID", "1888747"))
 API_HASH = environ.get("API_HASH", "0d707e8ae15254b1453c614bf3026c32")
 BOT_TOKEN = environ.get("BOT_TOKEN", "")
 
-OWNER = int(environ.get("OWNER", "7335874062"))
-CREDIT = environ.get("CREDIT", "@adisxverified")
+OWNER = int(environ.get("OWNER", "8342248523"))
+CREDIT = environ.get("CREDIT", "@adxboy")
 
 MONGO_URL = environ.get("MONGO_URL", "")
 #WEBHOOK = True  # Don't change this
