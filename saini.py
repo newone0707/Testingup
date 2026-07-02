@@ -432,11 +432,29 @@ async def download_and_decrypt_video(url, cmd, name, key, referer=""):
 
         if is_valid_video_header(video_path):
             print(f"File {video_path} is already a valid unencrypted video file. Skipping XOR decrypt.")
+            if video_path.endswith('.mkv'):
+                mp4_out = f"{name}.mp4"
+                print(f"Converting {video_path} to {mp4_out} for MP4 output...")
+                conv_res = subprocess.run(f'ffmpeg -y -i "{video_path}" -c copy "{mp4_out}"', shell=True, capture_output=True)
+                if conv_res.returncode != 0:
+                    subprocess.run(f'ffmpeg -y -i "{video_path}" -c:v copy -c:a aac "{mp4_out}"', shell=True, capture_output=True)
+                if os.path.exists(mp4_out) and os.path.getsize(mp4_out) > 0:
+                    if os.path.exists(video_path): os.remove(video_path)
+                    return mp4_out
             return video_path
 
         decrypted = decrypt_file(video_path, key)
         if decrypted:
             print(f"File {video_path} decrypted successfully.")
+            if video_path.endswith('.mkv'):
+                mp4_out = f"{name}.mp4"
+                print(f"Converting {video_path} to {mp4_out} for MP4 output...")
+                conv_res = subprocess.run(f'ffmpeg -y -i "{video_path}" -c copy "{mp4_out}"', shell=True, capture_output=True)
+                if conv_res.returncode != 0:
+                    subprocess.run(f'ffmpeg -y -i "{video_path}" -c:v copy -c:a aac "{mp4_out}"', shell=True, capture_output=True)
+                if os.path.exists(mp4_out) and os.path.getsize(mp4_out) > 0:
+                    if os.path.exists(video_path): os.remove(video_path)
+                    return mp4_out
             return video_path
         else:
             print(f"Failed to decrypt {video_path}.")  
