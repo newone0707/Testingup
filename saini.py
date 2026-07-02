@@ -420,6 +420,20 @@ async def download_and_decrypt_video(url, cmd, name, key, referer=""):
                 return mp4_path
             return None
 
+        def is_valid_video_header(fp):
+            try:
+                with open(fp, 'rb') as f:
+                    h = f.read(16)
+                    if h.startswith(b'\x1a\x45\xdf\xa3') or b'ftyp' in h or b'moov' in h or h.startswith(b'\x47'):
+                        return True
+            except Exception:
+                pass
+            return False
+
+        if is_valid_video_header(video_path):
+            print(f"File {video_path} is already a valid unencrypted video file. Skipping XOR decrypt.")
+            return video_path
+
         decrypted = decrypt_file(video_path, key)
         if decrypted:
             print(f"File {video_path} decrypted successfully.")
