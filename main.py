@@ -1283,6 +1283,7 @@ async def txt_handler(bot: Client, m: Message):
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                         }
                         if global_cl_token:
+                            cl_headers['Authorization'] = global_cl_token
                             cl_headers['token'] = global_cl_token
 
                         def _cl_aes_decrypt(enc_str: str) -> str:
@@ -1321,22 +1322,10 @@ async def txt_handler(bot: Client, m: Message):
                                 # 1. Try encrypted_links (path)
                                 for cl_link in (cl_data.get('encrypted_links', []) or []):
                                     raw_p = cl_link.get('path', '') if isinstance(cl_link, dict) else str(cl_link)
-                                    raw_k = cl_link.get('key', '') if isinstance(cl_link, dict) else ''
                                     if raw_p:
                                         dec_p = raw_p if raw_p.startswith('http') else _cl_aes_decrypt(raw_p)
                                         if dec_p.startswith('http'):
                                             cl_fresh_url = dec_p
-                                            if raw_k:
-                                                dec_k1 = _cl_aes_decrypt(raw_k) if ':' in raw_k else raw_k
-                                                if dec_k1:
-                                                    try:
-                                                        from base64 import b64decode as _b64d
-                                                        dec_k2 = _b64d(dec_k1 + '=='[:(4 - len(dec_k1) % 4) % 4]).decode('utf-8', errors='ignore').strip()
-                                                        if dec_k2:
-                                                            appxkey = dec_k2
-                                                            print(f'classx fresh key updated from API: {appxkey}')
-                                                    except Exception as _ke:
-                                                        print(f'classx key decode error: {_ke}')
                                             print(f'classx URL decrypted from enc_links path!')
                                             break
                                             
