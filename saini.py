@@ -295,12 +295,8 @@ def decrypt_file(file_path, key_str):
     if not key:
         return True
 
-    file_sz = os.path.getsize(file_path)
-    if file_sz == 0:
-        return False
-
-    num_bytes = min(28, file_sz)
     with open(file_path, "r+b") as f:
+        num_bytes = min(28, os.path.getsize(file_path))
         with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
             for i in range(num_bytes):
                 mmapped_file[i] ^= key[i % len(key)]
