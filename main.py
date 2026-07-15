@@ -989,12 +989,14 @@ async def txt_handler(bot: Client, m: Message):
         links = []
         global_referer = "https://web.classplusapp.com/"
         global_cl_token = ""  # classx/appx user token from Extractor
+        global_api_base = "https://api.classx.co.in"
         for i in content:
             if "Token:" in i and i.strip().startswith("Token:"):
                 global_cl_token = i.split("Token:", 1)[1].strip()
                 continue
             if "BaseURL:" in i:
                 raw_base = i.split("BaseURL:")[1].strip()
+                global_api_base = raw_base
                 import re
                 _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', raw_base, re.IGNORECASE)
                 if _m:
@@ -1268,14 +1270,11 @@ async def txt_handler(bot: Client, m: Message):
                 appxkey = ""
                 # classx format: URL*size/key*course_id*video_id (4 parts)
                 # For classx, fetch fresh signed URL via API using course_id & video_id
-                if 'classx.co.in' in url and len(parts) == 4:
+                if len(parts) == 4:
                     appxkey = parts[1].strip()
                     try:
                         cl_course_id = parts[2].strip()
                         cl_video_id = parts[3].strip()
-                        import re as _re
-                        tenant_match = _re.match(r'https?://([^.]+)\.classx\.co\.in', global_referer)
-                        cl_tenant = tenant_match.group(1) if tenant_match else 'beingdoctor'
                         cl_headers = {
                             'Client-Service': 'Appx',
                             'Auth-Key': 'appxapi',
@@ -1312,7 +1311,7 @@ async def txt_handler(bot: Client, m: Message):
 
                         cl_fresh_url = ''
                         for cl_ytflag in ['0', '1']:
-                            cl_api = f'https://{cl_tenant}api.classx.co.in/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag={cl_ytflag}&folder_wise_course=1'
+                            cl_api = f'{global_api_base}/get/fetchVideoDetailsById?course_id={cl_course_id}&video_id={cl_video_id}&ytflag={cl_ytflag}&folder_wise_course=1'
                             cl_resp = requests.get(cl_api, headers=cl_headers, timeout=15)
                             print(f'classx API status={cl_resp.status_code} vid={cl_video_id}')
                             if cl_resp.status_code == 200:
@@ -1359,9 +1358,7 @@ async def txt_handler(bot: Client, m: Message):
                         print(f'classx API exception: {cl_err}')
                 elif len(parts) == 2:
                     appxkey = parts[1].strip()
-                # len 3 = URL*COURSE_ID*FI with no key, len 4 non-classx = URL*KEY*COURSE_ID*FI
-                elif len(parts) == 4 and 'classx.co.in' not in url:
-                    appxkey = parts[1].strip()
+
 
             if "youtu" in url:
                 ytf = f"bv*[height<={raw_text2}][ext=mp4]+ba[ext=m4a]/b[height<=?{raw_text2}]"
