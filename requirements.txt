@@ -16,3 +16,4 @@ ffmpeg
 ffprobe
 curl_cffi
 motor
+cryptography
