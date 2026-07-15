@@ -1,11 +1,14 @@
-import base64
 import json
-import hashlib
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
+import sys
+import os
 
-# Secret key must be 32 bytes for AES-256
-SECRET_KEY = hashlib.sha256(b"adx_custom_encryption_key_2026").digest()
+try:
+    from adx_encryption import ADXEncryption
+except ImportError:
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    if root_dir not in sys.path:
+        sys.path.append(root_dir)
+    from adx_encryption import ADXEncryption
 
 def encrypt_appx_params(api, course_id, video_id, token, user_id):
     """
@@ -17,6 +20,22 @@ def encrypt_appx_params(api, course_id, video_id, token, user_id):
         "a": str(api),
         "c": str(course_id),
         "vi": str(video_id),
+        "t": str(token),
+        "u": str(user_id)
+    }
+    return _encrypt_dict(data)
+
+def encrypt_api_file(api, course_id, folder_id, item_id, token, user_id):
+    """
+    Encrypts parameters for a single file inside a folder (like ZIPs or PDFs).
+    This allows Testingup to dynamically fetch the folder contents and extract the freshly signed link.
+    """
+    data = {
+        "type": "api_file",
+        "a": str(api),
+        "c": str(course_id),
+        "f": str(folder_id),
+        "i": str(item_id),
         "t": str(token),
         "u": str(user_id)
     }
@@ -37,11 +56,9 @@ def encrypt_direct_url(url, key=None):
 
 def _encrypt_dict(data):
     json_str = json.dumps(data)
-    padded_data = pad(json_str.encode('utf-8'), AES.block_size)
-    cipher = AES.new(SECRET_KEY, AES.MODE_ECB)
-    encrypted_bytes = cipher.encrypt(padded_data)
-    b64_enc = base64.b64encode(encrypted_bytes).decode('utf-8')
-    return f"ADX_ENC:{b64_enc}"
+    adx = ADXEncryption()
+    encrypted_str = adx.encrypt(json_str)
+    return f"ADX_ENC:{encrypted_str}"
 
 def decrypt_appx_data(encrypted_str):
     """
@@ -52,11 +69,8 @@ def decrypt_appx_data(encrypted_str):
         raise ValueError("Invalid encryption format")
         
     b64_enc = encrypted_str.replace("ADX_ENC:", "")
-    encrypted_bytes = base64.b64decode(b64_enc)
-    
-    cipher = AES.new(SECRET_KEY, AES.MODE_ECB)
-    decrypted_padded_bytes = cipher.decrypt(encrypted_bytes)
-    
-    json_str = unpad(decrypted_padded_bytes, AES.block_size).decode('utf-8')
-    return json.loads(json_str)
+    adx = ADXEncryption()
+    decrypted_str = adx.decrypt(b64_enc)
+    return json.loads(decrypted_str)
+
 
