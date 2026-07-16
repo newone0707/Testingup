@@ -192,6 +192,7 @@ async def resolve_appx_link(encrypted_string):
             return outputs[0] if outputs else None
             
     except Exception as e:
-        logging.error(f"Error resolving Appx link: {e}")
+        import traceback
+        logging.error(f"Error resolving Appx link: {e}\n{traceback.format_exc()}")
         return None
 
