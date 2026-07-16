@@ -1861,7 +1861,7 @@ async def text_handler(bot: Client, m: Message):
             if ".pdf*" in url:
                 url = f"https://dragoapi.vercel.app/pdf/{url}"
             
-            elif \'*\' in url:
+            elif '*' in url:
                 parts = url.split('*')
                 url = parts[0].strip()
                 if len(parts) == 4 or len(parts) == 2:
