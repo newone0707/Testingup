@@ -90,6 +90,7 @@ async def resolve_appx_link(encrypted_string, override_token=None):
                 headers["User-ID"] = userid
             if token:
                 headers["Authorization"] = token
+                headers["token"] = token
                 
             
             
@@ -128,6 +129,7 @@ async def resolve_appx_link(encrypted_string, override_token=None):
                 headers["User-ID"] = userid
             if token:
                 headers["Authorization"] = token
+                headers["token"] = token
                 
             
             
