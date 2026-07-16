@@ -28,23 +28,23 @@ def decode_base64(encoded_str):
     except Exception as e:
         return ""
 
-import cloudscraper
+import aiohttp
 import asyncio
 
 async def safe_fetch_json(url, headers):
     try:
-        def fetch():
-            scraper = cloudscraper.create_scraper()
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             h = dict(headers)
             if "User-Agent" not in h:
                 h["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-            resp = scraper.get(url, headers=h)
-            if resp.status_code == 200:
-                return resp.json()
-            else:
-                print(f"Failed API Fetch: Status {resp.status_code}, Body: {resp.text}")
-                return None
-        return await asyncio.to_thread(fetch)
+            async with session.get(url, headers=h) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                else:
+                    text = await resp.text()
+                    print(f"Failed API Fetch: Status {resp.status}, Body: {text}")
+                    return None
     except Exception as e:
         import traceback
         print(f"Failed to fetch JSON from {url}: {e}\n{traceback.format_exc()}")
