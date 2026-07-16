@@ -1188,7 +1188,7 @@ async def txt_handler(bot: Client, m: Message):
             original_url = links[i][1]
             if original_url.startswith("ADX_ENC:"):
                 from appx_decrypter import resolve_appx_link
-                resolved_url = await resolve_appx_link(original_url)
+                resolved_url = await resolve_appx_link(original_url, global_cl_token)
                 if not resolved_url:
                     await m.reply_text("Failed to decrypt link dynamically.")
                     continue
