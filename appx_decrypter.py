@@ -28,26 +28,33 @@ def decode_base64(encoded_str):
     except Exception as e:
         return ""
 
-import aiohttp
+import requests
 import asyncio
 
-async def safe_fetch_json(url, headers):
+def sync_safe_fetch(url, headers):
     try:
-        timeout = aiohttp.ClientTimeout(total=15)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            h = dict(headers)
-            if "User-Agent" not in h:
-                h["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-            async with session.get(url, headers=h) as resp:
-                if resp.status == 200:
-                    return await resp.json()
-                else:
-                    text = await resp.text()
-                    print(f"Failed API Fetch: Status {resp.status}, Body: {text}")
-                    return None
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code == 200:
+            return r.json()
+        else:
+            print(f"Failed API Fetch: Status {r.status_code}, Body: {r.text}")
+            return None
     except Exception as e:
         import traceback
         print(f"Failed to fetch JSON from {url}: {e}\n{traceback.format_exc()}")
+        return None
+
+async def safe_fetch_json(url, headers, max_retries=3):
+    h = dict(headers)
+    if "User-Agent" not in h:
+        h["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    h["Accept"] = "application/json, text/plain, */*"
+    
+    for attempt in range(max_retries):
+        result = await asyncio.to_thread(sync_safe_fetch, url, h)
+        if result is not None:
+            return result
+        await asyncio.sleep(2 * (attempt + 1))
     return None
 
 async def resolve_appx_link(encrypted_string):
