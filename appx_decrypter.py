@@ -70,7 +70,7 @@ async def resolve_appx_link(encrypted_string):
         if data["type"] == "url":
             url = data["url"]
             if url:
-                url = re.sub(r'\.zip', '.m3u8', url, flags=re.IGNORECASE)
+                pass # url = re.sub(r'\.zip', '.m3u8', url, flags=re.IGNORECASE)
             if "key" in data:
                 return f"{url}*{data['key']}"
             return url
@@ -110,7 +110,7 @@ async def resolve_appx_link(encrypted_string):
                             dec = decrypt(item_link)
                             if dec: item_link = dec
                         if item_link:
-                            item_link = re.sub(r'\.zip', '.m3u8', item_link, flags=re.IGNORECASE)
+                            pass # item_link = re.sub(r'\.zip', '.m3u8', item_link, flags=re.IGNORECASE)
                         return item_link
             return None
 
@@ -145,7 +145,7 @@ async def resolve_appx_link(encrypted_string):
                     if path:
                         decrypted_path = decrypt(path)
                         if decrypted_path:
-                            decrypted_path = re.sub(r'\.zip', '.m3u8', decrypted_path, flags=re.IGNORECASE)
+                            pass # decrypted_path = re.sub(r'\.zip', '.m3u8', decrypted_path, flags=re.IGNORECASE)
                             
                             if key:
                                 decrypted_key = decrypt(key)
@@ -172,7 +172,7 @@ async def resolve_appx_link(encrypted_string):
             if fl:
                 dfl = decrypt(fl)
                 if dfl:
-                    dfl = re.sub(r'\.zip', '.m3u8', dfl, flags=re.IGNORECASE)
+                    pass # dfl = re.sub(r'\.zip', '.m3u8', dfl, flags=re.IGNORECASE)
                     if not ('.m3u8' in dfl or '.mp4' in dfl or 'genomic' in dfl or '/' in dfl):
                         final_link = f"https://youtu.be/{dfl}"
                         outputs.append(final_link)
@@ -180,7 +180,7 @@ async def resolve_appx_link(encrypted_string):
             if vl:
                 dvl = decrypt(vl)
                 if dvl:
-                    dvl = re.sub(r'\.zip', '.m3u8', dvl, flags=re.IGNORECASE)
+                    pass # dvl = re.sub(r'\.zip', '.m3u8', dvl, flags=re.IGNORECASE)
                     outputs.append(dvl)
             elif not fl:
                 for link in jdata.get("encrypted_links", []):
@@ -191,7 +191,7 @@ async def resolve_appx_link(encrypted_string):
                         k2 = decode_base64(k1)
                         da = decrypt(a)
                         if da:
-                            da = re.sub(r'\.zip', '.m3u8', da, flags=re.IGNORECASE)
+                            pass # da = re.sub(r'\.zip', '.m3u8', da, flags=re.IGNORECASE)
                             outputs.append(f"{da}*{k2}")
                             break
                     elif a:
@@ -200,7 +200,7 @@ async def resolve_appx_link(encrypted_string):
                         else:
                             da = a
                         if da:
-                            da = re.sub(r'\.zip', '.m3u8', da, flags=re.IGNORECASE)
+                            pass # da = re.sub(r'\.zip', '.m3u8', da, flags=re.IGNORECASE)
                             outputs.append(da)
                             break
 
@@ -216,7 +216,7 @@ async def resolve_appx_link(encrypted_string):
                         dp = pdf_link
                     
                     if dp:
-                        dp = re.sub(r'\.zip', '.m3u8', dp, flags=re.IGNORECASE)
+                        pass # dp = re.sub(r'\.zip', '.m3u8', dp, flags=re.IGNORECASE)
                         if pdf_key:
                             dpk = decrypt(pdf_key)
                             if dpk and dpk != "abcdefg":
