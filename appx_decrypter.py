@@ -1,4 +1,4 @@
-import aiohttp
+import logging
 import logging
 from custom_crypto import decrypt_appx_data
 from base64 import b64decode
@@ -140,10 +140,18 @@ async def resolve_appx_link(encrypted_string):
                 drm_data = r4.get("data", [])
                 if isinstance(drm_data, list) and len(drm_data) > 0:
                     path = drm_data[0].get("path", "")
+                    key = drm_data[0].get("key", "")
+                    
                     if path:
                         decrypted_path = decrypt(path)
                         if decrypted_path:
                             decrypted_path = re.sub(r'\.zip', '.m3u8', decrypted_path, flags=re.IGNORECASE)
+                            
+                            if key:
+                                decrypted_key = decrypt(key)
+                                if decrypted_key:
+                                    return f"{decrypted_path}*{decrypted_key}"
+                                    
                             return decrypted_path
             
             # Fallback to fetchVideoDetailsById if get_mpd_drm_links fails
