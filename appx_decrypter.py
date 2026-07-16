@@ -28,14 +28,26 @@ def decode_base64(encoded_str):
     except Exception as e:
         return ""
 
+import cloudscraper
+import asyncio
+
 async def safe_fetch_json(url, headers):
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as resp:
-                if resp.status == 200:
-                    return await resp.json()
+        def fetch():
+            scraper = cloudscraper.create_scraper()
+            h = dict(headers)
+            if "User-Agent" not in h:
+                h["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+            resp = scraper.get(url, headers=h)
+            if resp.status_code == 200:
+                return resp.json()
+            else:
+                print(f"Failed API Fetch: Status {resp.status_code}, Body: {resp.text}")
+                return None
+        return await asyncio.to_thread(fetch)
     except Exception as e:
-        logging.error(f"Failed to fetch JSON from {url}: {e}")
+        import traceback
+        print(f"Failed to fetch JSON from {url}: {e}\n{traceback.format_exc()}")
     return None
 
 async def resolve_appx_link(encrypted_string):
@@ -72,6 +84,11 @@ async def resolve_appx_link(encrypted_string):
             if token:
                 headers["Authorization"] = token
                 headers["token"] = token
+            headers["appx-version"] = "2"
+            headers["device_type"] = "WEB"
+            headers["Client-Service"] = "Appx"
+            headers["source"] = "website"
+            headers["Auth-Key"] = "appxapi"
                 
             r4 = await safe_fetch_json(url, headers)
             if not r4 or not r4.get("data"):
@@ -105,6 +122,11 @@ async def resolve_appx_link(encrypted_string):
             if token:
                 headers["Authorization"] = token
                 headers["token"] = token
+            headers["appx-version"] = "2"
+            headers["device_type"] = "WEB"
+            headers["Client-Service"] = "Appx"
+            headers["source"] = "website"
+            headers["Auth-Key"] = "appxapi"
                 
             r4 = await safe_fetch_json(url, headers)
             if r4 and r4.get("data"):
