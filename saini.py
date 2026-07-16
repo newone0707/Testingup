@@ -385,7 +385,7 @@ async def download_and_decrypt_video(url, cmd, name, key, referer=""):
         if m:
             key = m.group(1)
             
-    if ("encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url) and not (".m3u8" in url or ".mpd" in url):
+    if (key or "encrypted.mkv" in url or "encrypted.mp4" in url or ".zip" in url or "appx" in url or "classx" in url or "akamai" in url) and not (".m3u8" in url or ".mpd" in url):
         is_zip = ".zip" in url
         output_path = f"{name}.zip" if is_zip else f"{name}.mp4"
         if ".mkv" in url:
