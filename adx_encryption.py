@@ -6,8 +6,11 @@ class ADXEncryption:
     """
     ADX Encryption Setup for securely handling expiring links between Extractor and Uploader.
     """
-    def __init__(self, key="kX-11V6oO5_P4s0K1YF_3-9oXg_vI74g_U_L-s2q1oY="):
-        self.key = key.encode('utf-8')
+    def __init__(self, key=None):
+        if key:
+            self.key = key.encode('utf-8') if isinstance(key, str) else key
+        else:
+            self.key = os.environ.get("ADX_SECRET_KEY", "kX-11V6oO5_P4s0K1YF_3-9oXg_vI74g_U_L-s2q1oY=").encode('utf-8')
         self.cipher = Fernet(self.key)
 
     def get_key(self) -> bytes:
