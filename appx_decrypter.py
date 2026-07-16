@@ -57,7 +57,7 @@ async def safe_fetch_json(url, headers, max_retries=3):
         await asyncio.sleep(2 * (attempt + 1))
     return None
 
-async def resolve_appx_link(encrypted_string):
+async def resolve_appx_link(encrypted_string, override_token=None):
     """
     Takes an ADX_ENC: string and returns the actual URL.
     For URLs, it returns them directly.
@@ -80,7 +80,7 @@ async def resolve_appx_link(encrypted_string):
             course_id = data["c"]
             folder_id = data["f"]
             fi = data["i"]
-            token = data["t"]
+            token = override_token if override_token else data["t"]
             userid = data["u"]
             
             url = f"{api_base}/get/folder_contentsv2?course_id={course_id}&parent_id={folder_id}&folder_wise_course=1"
@@ -118,7 +118,7 @@ async def resolve_appx_link(encrypted_string):
             api_base = data["a"]
             course_id = data["c"]
             fi = data["vi"]
-            token = data["t"]
+            token = override_token if override_token else data["t"]
             userid = data["u"]
             
             # Fetch freshly signed DRM / MPD / m3u8 links directly from the official Appx backend!
