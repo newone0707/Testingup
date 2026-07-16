@@ -99,6 +99,13 @@ async def resolve_appx_link(encrypted_string, override_token=None):
             headers["Auth-Key"] = "appxapi"
                 
             r4 = await safe_fetch_json(url, headers)
+            
+            # Fallback for WEB tokens
+            if not r4 or not r4.get("data"):
+                headers["device_type"] = "WEB"
+                headers["appx-version"] = "2"
+                r4 = await safe_fetch_json(url, headers)
+
             if not r4 or not r4.get("data"):
                 return None
                 
@@ -138,6 +145,13 @@ async def resolve_appx_link(encrypted_string, override_token=None):
             headers["Auth-Key"] = "appxapi"
                 
             r4 = await safe_fetch_json(url, headers)
+            
+            # Fallback for WEB tokens
+            if not r4 or not r4.get("data"):
+                headers["device_type"] = "WEB"
+                headers["appx-version"] = "2"
+                r4 = await safe_fetch_json(url, headers)
+
             if r4 and r4.get("data"):
                 drm_data = r4.get("data", [])
                 if isinstance(drm_data, list) and len(drm_data) > 0:
@@ -162,6 +176,13 @@ async def resolve_appx_link(encrypted_string, override_token=None):
                 url += f"&userid={userid}"
                 
             r4 = await safe_fetch_json(url, headers)
+            
+            # Fallback for WEB tokens
+            if not r4 or not r4.get("data"):
+                headers["device_type"] = "WEB"
+                headers["appx-version"] = "2"
+                r4 = await safe_fetch_json(url, headers)
+
             if not r4 or not r4.get("data"):
                 return None
                 
