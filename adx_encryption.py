@@ -27,7 +27,7 @@ class ADXEncryption:
     def decrypt(self, encrypted_string: str) -> str:
         """Decrypts an ADX encrypted string back to the original URL."""
         try:
-            encrypted_bytes = base64.b64decode(encrypted_string.encode('utf-8'))
+            encrypted_bytes = encrypted_string.encode('utf-8')
             decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
             return decrypted_bytes.decode('utf-8')
         except Exception as e:
