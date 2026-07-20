@@ -120,7 +120,10 @@ async def list_auth_users(client: Client, message: Message):
         return
     
     auth_users = await db.get_all_auth_users()
-    user_list = '\n'.join(map(str, auth_users))  # AUTH_USERS ki list dikhayenge
+    if auth_users:
+        user_list = '\n'.join(map(str, auth_users))
+    else:
+        user_list = "None"
     await message.reply_text(f"**Authorized Users:**\n{user_list}")
 
 @bot.on_message(filters.command("rmauth") & filters.private)
@@ -376,7 +379,6 @@ async def txt_handler(bot: Client, m: Message):
                     continue
                 if "BaseURL:" in i:
                     raw_base = i.split("BaseURL:")[1].strip()
-                    import re
                     _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', raw_base, re.IGNORECASE)
                     if _m:
                         global_referer = f"{_m.group(1)}{_m.group(2)}.{_m.group(4)}/"
@@ -645,6 +647,20 @@ async def start(bot, m: Message):
            f"**You are currently using the free version.** 🆓\n\n<blockquote expandable>I'm here to make your life easier by downloading videos from your **.txt** file 📄 and uploading them directly to Telegram!</blockquote>\n\n**Want to get started? Press /id**\n\n💬 Contact : [{CREDIT}⁬](tg://openmessage?user_id={OWNER}) to Get The Subscription 🎫 and unlock the full potential of your new bot! 🔓\n", disable_web_page_preview=True, reply_markup=keyboard
     )
 
+async def safe_edit_media(message, media_input, caption, reply_markup=None):
+    """Safely edit message media, falling back to delete+send if edit fails."""
+    try:
+        await message.edit_media(media_input, reply_markup=reply_markup)
+    except Exception:
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        if hasattr(media_input, 'media'):
+            await message.reply_photo(photo=media_input.media, caption=caption, reply_markup=reply_markup)
+        else:
+            await message.reply_text(caption, reply_markup=reply_markup)
+
 @bot.on_callback_query(filters.regex("back_to_main_menu"))
 async def back_to_main_menu(client, callback_query):
     user_id = callback_query.from_user.id
@@ -656,13 +672,7 @@ async def back_to_main_menu(client, callback_query):
             [InlineKeyboardButton(text="📞 Contact", url=f"tg://openmessage?user_id={OWNER}"), InlineKeyboardButton(text="🛠️ Repo", url="https://github.com/nikhilsainiop/saini-txt-direct")],
         ])
     
-    await callback_query.message.edit_media(
-      InputMediaPhoto(
-        media="https://files.catbox.moe/8e2qqw.jpg",
-        caption=caption
-      ),
-      reply_markup=keyboard
-    )
+    await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://files.catbox.moe/8e2qqw.jpg", caption=caption), caption, keyboard)
     await callback_query.answer()  
 
 @bot.on_callback_query(filters.regex("cmd_command"))
@@ -674,13 +684,7 @@ async def cmd(client, callback_query):
         [InlineKeyboardButton("🚻 User", callback_data="user_command"), InlineKeyboardButton("🚹 Owner", callback_data="owner_command")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main_menu")]
     ])
-    await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_00000000fc2461fbbdd6bc500cecbff8_conversation_id6874702c-9760-800e-b0bf-8e0bcf8a3833message_id964012ce-7ef5-4ad4-88e0-1c41ed240c03-1-1.jpg",
-      caption=caption
-    ),
-    reply_markup=keyboard
-    )
+    await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_00000000fc2461fbbdd6bc500cecbff8_conversation_id6874702c-9760-800e-b0bf-8e0bcf8a3833message_id964012ce-7ef5-4ad4-88e0-1c41ed240c03-1-1.jpg", caption=caption), caption, keyboard)
 
 
 @bot.on_callback_query(filters.regex("user_command"))
@@ -713,13 +717,7 @@ async def help_button(client, callback_query):
         f"╰────────⊰◆⊱────────╯\n"
   )
     
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_00000000fc2461fbbdd6bc500cecbff8_conversation_id6874702c-9760-800e-b0bf-8e0bcf8a3833message_id964012ce-7ef5-4ad4-88e0-1c41ed240c03-1-1.jpg",
-      caption=caption
-    ),
-    reply_markup=keyboard
-    )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_00000000fc2461fbbdd6bc500cecbff8_conversation_id6874702c-9760-800e-b0bf-8e0bcf8a3833message_id964012ce-7ef5-4ad4-88e0-1c41ed240c03-1-1.jpg", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("owner_command"))
 async def help_button(client, callback_query):
@@ -740,13 +738,7 @@ async def help_button(client, callback_query):
         f"╰────────⊰◆⊱────────╯\n"
   )
     
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_00000000fc2461fbbdd6bc500cecbff8_conversation_id6874702c-9760-800e-b0bf-8e0bcf8a3833message_id964012ce-7ef5-4ad4-88e0-1c41ed240c03-1-1.jpg",
-      caption=caption
-    ),
-    reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_00000000fc2461fbbdd6bc500cecbff8_conversation_id6874702c-9760-800e-b0bf-8e0bcf8a3833message_id964012ce-7ef5-4ad4-88e0-1c41ed240c03-1-1.jpg", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("upgrade_command"))
 async def upgrade_button(client, callback_query):
@@ -774,13 +766,7 @@ async def upgrade_button(client, callback_query):
            f"If you want to buy membership of the bot, feel free to contact [{CREDIT}](tg://user?id={OWNER})\n"
     )  
     
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://envs.sh/GVI.jpg",
-      caption=caption
-    ),
-    reply_markup=keyboard
-    )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://envs.sh/GVI.jpg", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("feat_command"))
 async def feature_button(client, callback_query):
@@ -794,122 +780,62 @@ async def feature_button(client, callback_query):
       [InlineKeyboardButton("📝 Text File", callback_data="txt_maker_command"), InlineKeyboardButton("📢 Broadcast", callback_data="broadcast_command")],
       [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main_menu")]
   ])
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-    ),
-    reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("pin_command"))
 async def pin_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**Auto Pin 📌 Batch Name :**\n\nAutomatically Pins the Batch Name in Channel or Group, If Starting from the First Link."
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
     
 @bot.on_callback_query(filters.regex("watermark_command"))
 async def watermark_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**Custom Watermark :**\n\nSet Your Own Custom Watermark on Videos for Added Personalization."
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 
 @bot.on_callback_query(filters.regex("reset_command"))
 async def restart_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**🔄 Reset Command:**\n\nIf You Want to Reset or Restart Your Bot, Simply Use Command /reset."
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("logs_command"))
 async def pin_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**🖨️ Bot Working Logs:**\n\n◆/logs - Bot Send Working Logs in .txt File."
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-    )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("custom_command"))
 async def custom_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**🖋️ Custom File Name:**\n\nSupport for Custom Name before the File Extension.\nAdd name ..when txt is uploading"
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("titlle_command"))
 async def titlle_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**Custom Title Feature :**\nAdd and customize titles at the starting\n**NOTE 📍 :** The Titile must enclosed within (Title), Best For appx's .txt file."
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("broadcast_command"))
 async def pin_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**📢 Broadcasting Support:**\n\n◆/broadcast - 📢 Broadcast to All Users.\n◆/broadusers - 👁️ To See All Broadcasting User"
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("txt_maker_command"))
 async def editor_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**🤖 Available Commands 🗓️**\n◆/t2t for text to .txt file\n"
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://tinypic.host/images/2025/07/14/file_000000002d44622f856a002a219cf27aconversation_id68747543-56d8-800e-ae47-bb6438a09851message_id8e8cbfb5-ea6c-4f59-974a-43bdf87130c0.png", caption=caption), caption, keyboard)
 
 @bot.on_callback_query(filters.regex("yt_command"))
 async def y2t_button(client, callback_query):
   keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Feature", callback_data="feat_command")]])
   caption = f"**YouTube Commands:**\n\n◆/y2t - 🔪 YouTube Playlist → .txt Converter\n◆/ytm - 🎶 YouTube → .mp3 downloader\n\n<blockquote><b>◆YouTube → .mp3 downloader\n01. Send YouTube Playlist.txt file\n02. Send single or multiple YouTube links set\neg.\n`https://www.youtube.com/watch?v=xxxxxx\nhttps://www.youtube.com/watch?v=yyyyyy`</b></blockquote>"
-  await callback_query.message.edit_media(
-    InputMediaPhoto(
-      media="https://envs.sh/GVi.jpg",
-      caption=caption
-      ),
-      reply_markup=keyboard
-  )
+  await safe_edit_media(callback_query.message, InputMediaPhoto(media="https://envs.sh/GVi.jpg", caption=caption), caption, keyboard)
          
 @bot.on_message(filters.command(["id"]))
 async def id_command(client, message: Message):
@@ -925,14 +851,17 @@ async def id_command(client, message: Message):
 @bot.on_message(filters.private & filters.command(["info"]))
 async def info(bot: Client, update: Message):
     
+    u = update.from_user
+    uname = f"@{u.username}" if u.username else "None"
+    lname = u.last_name if u.last_name else ""
     text = (
         f"╭────────────────╮\n"
         f"│✨ **Your Telegram Info**✨ \n"
         f"├────────────────\n"
-        f"├🔹**Name :** `{update.from_user.first_name} {update.from_user.last_name if update.from_user.last_name else 'None'}`\n"
-        f"├🔹**User ID :** @{update.from_user.username}\n"
-        f"├🔹**TG ID :** `{update.from_user.id}`\n"
-        f"├🔹**Profile :** {update.from_user.mention}\n"
+        f"├🔹**Name :** `{u.first_name} {lname}`\n"
+        f"├🔹**User ID :** {uname}\n"
+        f"├🔹**TG ID :** `{u.id}`\n"
+        f"├🔹**Profile :** {u.mention}\n"
         f"╰────────────────╯"
     )
     
@@ -997,7 +926,6 @@ async def txt_handler(bot: Client, m: Message):
             if "BaseURL:" in i:
                 raw_base = i.split("BaseURL:")[1].strip()
                 global_api_base = raw_base
-                import re
                 _m = re.match(r'(https?://)([^.]+?)(api)?\.(.+)$', raw_base, re.IGNORECASE)
                 if _m:
                     global_referer = f"{_m.group(1)}{_m.group(2)}.{_m.group(4)}/"
@@ -1147,12 +1075,12 @@ async def txt_handler(bot: Client, m: Message):
     await editable.edit("__**⚠️Provide the Channel ID or send /d__\n\n<blockquote><i>🔹 Make me an admin to upload.\n🔸Send /id in your channel to get the Channel ID.\n\nExample: Channel ID = -100XXXXXXXXXXX</i></blockquote>\n**")
     try:
         input7: Message = await bot.listen(editable.chat.id, timeout=20)
-        raw_text7 = input7.text
+        raw_text7 = input7.text.strip()
         await input7.delete(True)
     except asyncio.TimeoutError:
         raw_text7 = '/d'
 
-    if "/d" in raw_text7:
+    if raw_text7 == "/d":
         channel_id = m.chat.id
     else:
         channel_id = raw_text7    
@@ -1161,14 +1089,14 @@ async def txt_handler(bot: Client, m: Message):
     try:
         if raw_text == "1":
             batch_message = await bot.send_message(chat_id=channel_id, text=f"<blockquote><b>🎯Target Batch : {b_name}</b></blockquote>")
-            if "/d" not in raw_text7:
+            if raw_text7 != "/d":
                 await bot.send_message(chat_id=m.chat.id, text=f"<blockquote><b><i>🎯Target Batch : {b_name}</i></b></blockquote>\n\n🔄 Your Task is under processing, please check your Set Channel📱. Once your task is complete, I will inform you 📩")
                 await bot.pin_chat_message(channel_id, batch_message.id)
                 message_id = batch_message.id
                 pinning_message_id = message_id + 1
                 await bot.delete_messages(channel_id, pinning_message_id)
         else:
-             if "/d" not in raw_text7:
+             if raw_text7 != "/d":
                 await bot.send_message(chat_id=m.chat.id, text=f"<blockquote><b><i>🎯Target Batch : {b_name}</i></b></blockquote>\n\n🔄 Your Task is under processing, please check your Set Channel📱. Once your task is complete, I will inform you 📩")
     except Exception as e:
         await m.reply_text(f"**Fail Reason »**\n<blockquote><i>{e}</i></blockquote>\n\n✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ {CREDIT}🌟`")
@@ -1198,7 +1126,7 @@ async def txt_handler(bot: Client, m: Message):
             url = "https://" + Vxy
             link0 = "https://" + Vxy
 
-            name1 = links[i][0].replace("(", "[").replace(")", "]").replace("_", "").replace("\t", "").replace(":", "").replace("/", "").replace("+", "").replace("#", "").replace("|", "").replace("@", "").replace("*", "").replace(".", "").replace("https", "").replace("http", "").strip()
+            name1 = links[i][0].replace("(", "[").replace(")", "]").replace("\t", " ").replace(":", " -").replace("/", "-").replace("+", " ").replace("#", " ").replace("|", "-").replace("@", " ").replace("*", "x").strip()
             if "," in raw_text3:
                 name = f'{str(count).zfill(3)}) {PRENAME} {name1[:60]}'
                 namef = f'{PRENAME} {name1[:60]}'
@@ -1430,7 +1358,7 @@ async def txt_handler(bot: Client, m: Message):
                         os.remove(ka)
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         continue    
   
                 elif ".pdf" in url:
@@ -1486,49 +1414,42 @@ async def txt_handler(bot: Client, m: Message):
                                 count += 1
                                 os.remove(f'{namef}.pdf')
                             else:
+                                failed_count += 1
                                 await bot.send_message(chat_id=channel_id, text=f"❌ **Failed to download:** {namef}\nLink might have expired.")
                         except FloodWait as e:
                             await m.reply_text(str(e))
-                            time.sleep(e.x)
+                            await asyncio.sleep(e.x)
                             continue    
 
-                elif any(ext in url for ext in [".zip", ".rar"]) and not ('appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url):
-                    if 'appx' in url or 'classx' in url or 'akamai' in url or 'encrypted' in url:
-                        ext = "zip" if ".zip" in url else "rar"
-                        success = await asyncio.to_thread(helper.sync_download, url, f'{namef}.{ext}', global_referer)
-                        if not success:
-                            origin_url = global_referer.rstrip('/')
-                            cmd = f'yt-dlp --add-header "Referer:{global_referer}" --add-header "Origin:{origin_url}" -o "{namef}.{ext}" "{url}"'
-                            os.system(cmd)
-                        res_file = f'{namef}.{ext}'
-                    else:
-                        ext = "zip" if ".zip" in url else "rar"
-                        cmd = f'yt-dlp -o "{namef}.{ext}" "{url}"'
-                        download_cmd = f"{cmd} -R 25 --fragment-retries 25"
-                        os.system(download_cmd)
-                        res_file = f'{namef}.{ext}'
+                elif any(ext in url for ext in [".zip", ".rar"]) and not any(x in url for x in ['appx', 'classx', 'akamai', 'encrypted']):
+                    ext = "zip" if ".zip" in url else "rar"
+                    cmd = f'yt-dlp -o "{namef}.{ext}" "{url}"'
+                    download_cmd = f"{cmd} -R 25 --fragment-retries 25"
+                    os.system(download_cmd)
+                    res_file = f'{namef}.{ext}'
                     try:
                         if os.path.exists(res_file):
                             copy = await bot.send_document(chat_id=channel_id, document=res_file, caption=cczip)
                             count += 1
                             os.remove(res_file)
                         else:
+                            failed_count += 1
                             await bot.send_message(chat_id=channel_id, text=f"❌ **Failed to download:** {namef}\nLink might have expired.")
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         continue
                 
                 elif ".ws" in url and  url.endswith(".ws"):
                     try:
                         await helper.pdf_download(f"{api_url}utkash-ws?url={url}&authorization={api_token}",f"{name}.html")
-                        time.sleep(1)
+                        await asyncio.sleep(1)
                         await bot.send_document(chat_id=channel_id, document=f"{name}.html", caption=cchtml)
                         os.remove(f'{name}.html')
                         count += 1
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         continue    
                             
                 elif any(ext in url for ext in [".jpg", ".jpeg", ".png"]):
@@ -1542,7 +1463,7 @@ async def txt_handler(bot: Client, m: Message):
                         os.remove(f'{namef}.{ext}')
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         continue    
 
                 elif any(ext in url for ext in [".mp3", ".wav", ".m4a"]):
@@ -1556,7 +1477,7 @@ async def txt_handler(bot: Client, m: Message):
                         os.remove(f'{namef}.{ext}')
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         continue    
                     
                 elif 'encrypted.m' in url or 'appx' in url or ('classx' in url and '.m3u8' not in url) or 'encrypted' in url:    
@@ -1725,8 +1646,8 @@ async def txt_handler(bot: Client, m: Message):
                     file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
                     if file_id: await db.save_video(link0, file_id, name)
                     count += 1
-                    time.sleep(1)
-                
+                    await asyncio.sleep(1)
+
             except Exception as e:
                 await bot.send_message(channel_id, f'⚠️**Downloading Failed**⚠️\n**Name** =>> `{str(count).zfill(3)} {name1}`\n**Url** =>> {url}\n\n<blockquote><i><b>Failed Reason: {str(e)}</b></i></blockquote>', disable_web_page_preview=True)
                 count += 1
@@ -1735,14 +1656,25 @@ async def txt_handler(bot: Client, m: Message):
 
     except Exception as e:
         await m.reply_text(e)
-        time.sleep(2)
+        await asyncio.sleep(2)
 
     success_count = len(links) - failed_count
-    video_count = v2_count + mpd_count + m3u8_count + yt_count + drm_count + zip_count + other_count
+    parsed_video_count = v2_count + mpd_count + m3u8_count + yt_count + drm_count
+    summary = (
+        f"<b>-┈━═.•°✅ Completed ✅°•.═━┈-</b>\n"
+        f"<blockquote><b>🎯Batch Name : {b_name}</b></blockquote>\n"
+        f"<blockquote>🔗 Total URLs: {len(links)} \n"
+        f"┃   ┠🔴 Failed: {failed_count}\n"
+        f"┃   ┠🟢 Successful: {success_count}\n"
+        f"┃   ┃   ┠📄 PDFs: {pdf_count}\n"
+        f"┃   ┃   ┠🖼 Images: {img_count}\n"
+        f"┃   ┃   ┠🎬 Video Links: {parsed_video_count}\n"
+        f"┃   ┃   ┠📦 Other: {other_count + zip_count}</blockquote>\n"
+    )
     if raw_text7 == "/d":
-        await bot.send_message(channel_id, f"<b>-┈━═.•°✅ Completed ✅°•.═━┈-</b>\n<blockquote><b>🎯Batch Name : {b_name}</b></blockquote>\n<blockquote>🔗 Total URLs: {len(links)} \n┃   ┠🔴 Total Failed URLs: {failed_count}\n┃   ┠🟢 Total Successful URLs: {success_count}\n┃   ┃   ┠🎥 Total Video URLs: {video_count}\n┃   ┃   ┠📄 Total PDF URLs: {pdf_count}\n┃   ┃   ┠📸 Total IMAGE URLs: {img_count}</blockquote>\n")
+        await bot.send_message(channel_id, summary)
     else:
-        await bot.send_message(channel_id, f"<b>-┈━═.•°✅ Completed ✅°•.═━┈-</b>\n<blockquote><b>🎯Batch Name : {b_name}</b></blockquote>\n<blockquote>🔗 Total URLs: {len(links)} \n┃   ┠🔴 Total Failed URLs: {failed_count}\n┃   ┠🟢 Total Successful URLs: {success_count}\n┃   ┃   ┠🎥 Total Video URLs: {video_count}\n┃   ┃   ┠📄 Total PDF URLs: {pdf_count}\n┃   ┃   ┠📸 Total IMAGE URLs: {img_count}</blockquote>\n")
+        await bot.send_message(channel_id, summary)
         await bot.send_message(m.chat.id, f"<blockquote><b>✅ Your Task is completed, please check your Set Channel📱</b></blockquote>")
 
 
@@ -1907,7 +1839,7 @@ async def text_handler(bot: Client, m: Message):
                             await bot.send_message(chat_id=m.chat.id, text=f"❌ **Failed to download:** {name}\nLink might have expired.")
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         pass
 
                 elif ".pdf" in url:
@@ -1970,7 +1902,7 @@ async def text_handler(bot: Client, m: Message):
                                 await bot.send_message(chat_id=m.chat.id, text=f"❌ **Failed to download:** {name}\nLink might have expired.")
                         except FloodWait as e:
                             await m.reply_text(str(e))
-                            time.sleep(e.x)
+                            await asyncio.sleep(e.x)
                             pass   
 
                 elif any(ext in url for ext in [".mp3", ".wav", ".m4a"]):
@@ -1983,7 +1915,7 @@ async def text_handler(bot: Client, m: Message):
                         os.remove(f'{name}.{ext}')
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         pass
 
                 elif any(ext in url for ext in [".jpg", ".jpeg", ".png"]):
@@ -1997,7 +1929,7 @@ async def text_handler(bot: Client, m: Message):
                         os.remove(f'{name}.{ext}')
                     except FloodWait as e:
                         await m.reply_text(str(e))
-                        time.sleep(e.x)
+                        await asyncio.sleep(e.x)
                         pass
                                 
                 elif 'encrypted.m' in url or 'appx' in url or ('classx' in url and '.m3u8' not in url) or 'encrypted' in url:    
@@ -2108,7 +2040,7 @@ async def text_handler(bot: Client, m: Message):
                     except: pass
                     file_id = await helper.send_vid(bot, m, cc, filename, vidwatermark, thumb, name, prog, channel_id)
                     if file_id: await db.save_video(link0, file_id, name)
-                    time.sleep(1)
+                    await asyncio.sleep(1)
 
             except Exception as e:
                     await m.reply_text(f"⚠️𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝𝐢𝐧𝐠 𝐈𝐧𝐭𝐞𝐫𝐮𝐩𝐭𝐞𝐝\n\n🔗𝐋𝐢𝐧𝐤 » `{link}`\n\n<blockquote><b><i>⚠️Failed Reason »\n{str(e)}</i></b></blockquote>")
