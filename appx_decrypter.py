@@ -45,7 +45,7 @@ def _cached_get(url, headers, timeout=15):
             return val
     try:
         r = requests.get(url, headers=headers, timeout=timeout)
-        if r.status_code == 200:
+        if r.status_code == 200 and r.text.strip():
             data = r.json()
             _url_cache[cache_key] = (now + _CACHE_TTL, data)
             return data
