@@ -266,14 +266,14 @@ async def download_video(url,cmd, name):
 
 async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
     reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
-    time.sleep(1)
+    await asyncio.sleep(1)
     start_time = time.time()
     await bot.send_document(ka, caption=cc1)
     count+=1
     await reply.delete (True)
-    time.sleep(1)
+    await asyncio.sleep(1)
     os.remove(ka)
-    time.sleep(3) 
+    await asyncio.sleep(3) 
 
 
 def get_key_bytes(key_str):
