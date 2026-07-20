@@ -1243,7 +1243,11 @@ async def txt_handler(bot: Client, m: Message):
                             cl_resp = requests.get(cl_api, headers=cl_headers, timeout=15)
                             print(f'classx API status={cl_resp.status_code} vid={cl_video_id}')
                             if cl_resp.status_code == 200:
-                                cl_json = cl_resp.json()
+                                try:
+                                    cl_json = cl_resp.json()
+                                except Exception:
+                                    print(f'classx non-JSON response: {cl_resp.text[:200]}')
+                                    continue
                                 cl_data = cl_json.get('data', {}) or {}
                                 
                                 # 1. Try encrypted_links (path)
