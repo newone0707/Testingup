@@ -1,258 +1,173 @@
 import logging
-import logging
-from custom_crypto import decrypt_appx_data
-from base64 import b64decode
-import base64
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
-
-def decrypt(enc):
-    try:
-        if not enc:
-            return ""
-        enc = b64decode(enc.split(':')[0])
-        key = '638udh3829162018'.encode('utf-8')
-        iv = 'fedcba9876543210'.encode('utf-8')
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        plaintext = unpad(cipher.decrypt(enc), AES.block_size)
-        return plaintext.decode('utf-8')
-    except Exception as e:
-        return ""
-
-def decode_base64(encoded_str):
-    try:
-        if not encoded_str:
-            return ""
-        decoded_bytes = base64.b64decode(encoded_str)
-        return decoded_bytes.decode('utf-8')
-    except Exception as e:
-        return ""
-
 import requests
 import asyncio
+import base64
+import time
+import re
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+from base64 import b64decode
+from custom_crypto import decrypt_appx_data
 
-def sync_safe_fetch(url, headers):
+_AES_KEY = b'638udh3829162018'
+_AES_IV = b'fedcba9876543210'
+
+# Simple TTL cache: { cache_key: (expires_at, fresh_url) }
+_url_cache = {}
+_CACHE_TTL = 600  # 10 minutes
+
+
+def _aes_decrypt(enc_str):
+    if not enc_str:
+        return ""
     try:
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code == 200:
-            return r.json()
-        else:
-            print(f"Failed API Fetch: Status {r.status_code}, Body: {r.text}")
-            return None
-    except Exception as e:
-        import traceback
-        print(f"Failed to fetch JSON from {url}: {e}\n{traceback.format_exc()}")
-        return None
+        enc = b64decode(enc_str.split(':')[0])
+        cipher = AES.new(_AES_KEY, AES.MODE_CBC, _AES_IV)
+        plaintext = unpad(cipher.decrypt(enc), AES.block_size)
+        return plaintext.decode('utf-8')
+    except Exception:
+        return ""
 
-async def safe_fetch_json(url, headers, max_retries=3):
-    h = dict(headers)
-    if "User-Agent" not in h:
-        h["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    h["Accept"] = "application/json, text/plain, */*"
-    
-    for attempt in range(max_retries):
-        result = await asyncio.to_thread(sync_safe_fetch, url, h)
-        if result is not None:
-            return result
-        await asyncio.sleep(2 * (attempt + 1))
+
+def _decode_b64(s):
+    try:
+        return base64.b64decode(s).decode('utf-8') if s else ""
+    except Exception:
+        return ""
+
+
+def _cached_get(url, headers, timeout=15):
+    cache_key = f"{url}|{headers.get('Authorization', '')}"
+    now = time.time()
+    if cache_key in _url_cache:
+        expires, val = _url_cache[cache_key]
+        if now < expires:
+            return val
+    try:
+        r = requests.get(url, headers=headers, timeout=timeout)
+        if r.status_code == 200:
+            data = r.json()
+            _url_cache[cache_key] = (now + _CACHE_TTL, data)
+            return data
+    except Exception as e:
+        logging.warning(f"API fetch failed: {url[:80]} -> {e}")
     return None
+
 
 async def resolve_appx_link(encrypted_string, override_token=None):
     """
-    Takes an ADX_ENC: string and returns the actual URL.
-    For URLs, it returns them directly.
-    For API payloads, it fetches fresh links from Appx to prevent expiration.
+    Resolve an ADX_ENC: string or a raw URL to a fresh download link.
+    Returns the fresh URL (possibly with *key suffix) or None.
     """
     try:
-        import re
-        data = decrypt_appx_data(encrypted_string)
-        
-        if data["type"] == "url":
-            url = data["url"]
-            if url:
-                pass # url = re.sub(r'\.zip', '.m3u8', url, flags=re.IGNORECASE)
-            if "key" in data:
-                return f"{url}*{data['key']}"
-            return url
-            
-        elif data["type"] == "api_file":
-            api_base = data["a"]
-            course_id = data["c"]
-            folder_id = data["f"]
-            fi = data["i"]
-            token = override_token if override_token else data["t"]
-            userid = data["u"]
-            
-            url = f"{api_base}/get/folder_contentsv2?course_id={course_id}&parent_id={folder_id}&folder_wise_course=1"
-            headers = {}
-            if userid:
-                url += f"&userid={userid}"
-                headers["User-ID"] = userid
-            if token:
-                headers["Authorization"] = token
-                headers["token"] = token
-                
-            
-            
-            headers["Client-Service"] = "Appx"
-            headers["source"] = "website"
-            headers["Auth-Key"] = "appxapi"
-                
-            r4 = await safe_fetch_json(url, headers)
-            
-            # Fallback for WEB tokens
-            if not r4 or not r4.get("data"):
-                headers["device_type"] = "WEB"
-                headers["appx-version"] = "2"
-                r4 = await safe_fetch_json(url, headers)
+        if not encrypted_string.startswith("ADX_ENC:"):
+            return encrypted_string
 
-            if not r4 or not r4.get("data"):
-                return None
-                
-            items = r4.get("data", [])
-            for item in items:
-                if str(item.get("id")) == str(fi):
-                    item_link = item.get('file_link') or item.get('pdf_link')
-                    if item_link:
-                        if not item_link.startswith('http') and ':' in item_link:
-                            dec = decrypt(item_link)
-                            if dec: item_link = dec
-                        if item_link:
-                            pass # item_link = re.sub(r'\.zip', '.m3u8', item_link, flags=re.IGNORECASE)
-                        return item_link
+        data = decrypt_appx_data(encrypted_string)
+
+        if data["type"] == "url":
+            url = data.get("url", "")
+            key = data.get("key", "")
+            if url:
+                return f"{url}*{key}" if key else url
             return None
 
-        elif data["type"] == "api":
-            api_base = data["a"]
-            course_id = data["c"]
-            fi = data["vi"]
-            token = override_token if override_token else data["t"]
-            userid = data["u"]
-            
-            # Fetch freshly signed DRM / MPD / m3u8 links directly from the official Appx backend!
-            url = f"{api_base}/get/get_mpd_drm_links?videoid={fi}&folder_wise_course=1"
-            headers = {}
+        if data["type"] in ("api", "api_file"):
+            api_base = data.get("a", "")
+            course_id = data.get("c", "")
+            fi = data.get("vi") or data.get("i") or data.get("f", "")
+            userid = data.get("u", "")
+            token = override_token or data.get("t", "")
+
+            headers = {
+                "Client-Service": "Appx",
+                "Auth-Key": "appxapi",
+                "source": "website",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
             if userid:
                 headers["User-ID"] = userid
             if token:
                 headers["Authorization"] = token
                 headers["token"] = token
-                
-            
-            
-            headers["Client-Service"] = "Appx"
-            headers["source"] = "website"
-            headers["Auth-Key"] = "appxapi"
-                
-            r4 = await safe_fetch_json(url, headers)
-            
-            # Fallback for WEB tokens
+
+            # 1. Try fetchVideoDetailsById for the actual download link
+            for ytflag in ('0', '1'):
+                url = f"{api_base}/get/fetchVideoDetailsById?course_id={course_id}&video_id={fi}&ytflag={ytflag}&folder_wise_course=1"
+                if userid:
+                    url += f"&userid={userid}"
+                r4 = _cached_get(url, headers)
+                if r4 and r4.get("data"):
+                    break
+
             if not r4 or not r4.get("data"):
-                headers["device_type"] = "WEB"
-                headers["appx-version"] = "2"
-                r4 = await safe_fetch_json(url, headers)
+                # Fallback: try without token (public courses)
+                headers.pop("Authorization", None)
+                headers.pop("token", None)
+                for ytflag in ('0', '1'):
+                    url = f"{api_base}/get/fetchVideoDetailsById?course_id={course_id}&video_id={fi}&ytflag={ytflag}&folder_wise_course=1"
+                    r4 = _cached_get(url, headers)
+                    if r4 and r4.get("data"):
+                        break
 
             if r4 and r4.get("data"):
-                drm_data = r4.get("data", [])
+                jdata = r4["data"]
+                outputs = []
+
+                # Priority 1: encrypted_links (path + key)
+                for link in jdata.get("encrypted_links", []) or []:
+                    raw_p = link.get("path", "") if isinstance(link, dict) else str(link)
+                    raw_k = link.get("key", "") if isinstance(link, dict) else ""
+                    if raw_p:
+                        dec_p = raw_p if raw_p.startswith("http") else _aes_decrypt(raw_p)
+                        if dec_p and dec_p.startswith("http"):
+                            if raw_k:
+                                dec_k = _aes_decrypt(raw_k)
+                                if dec_k:
+                                    outputs.append(f"{dec_p}*{dec_k}")
+                                else:
+                                    outputs.append(dec_p)
+                            else:
+                                outputs.append(dec_p)
+                            break
+
+                # Priority 2: file_link
+                if not outputs:
+                    fl = jdata.get("file_link", "") or ""
+                    if fl:
+                        dec_fl = fl if fl.startswith("http") else _aes_decrypt(fl)
+                        if dec_fl and dec_fl.startswith("http"):
+                            outputs.append(dec_fl)
+
+                # Priority 3: download_link
+                if not outputs:
+                    dl = jdata.get("download_link", "") or ""
+                    if dl:
+                        dec_dl = dl if dl.startswith("http") else _aes_decrypt(dl)
+                        if dec_dl and dec_dl.startswith("http"):
+                            outputs.append(dec_dl)
+
+                if outputs:
+                    return outputs[0]
+
+            # 2. If no video link, try get_mpd_drm_links for DRM content
+            url = f"{api_base}/get/get_mpd_drm_links?videoid={fi}&folder_wise_course=1"
+            r5 = _cached_get(url, headers)
+            if r5 and r5.get("data"):
+                drm_data = r5["data"]
                 if isinstance(drm_data, list) and len(drm_data) > 0:
                     path = drm_data[0].get("path", "")
                     key = drm_data[0].get("key", "")
-                    
                     if path:
-                        decrypted_path = decrypt(path)
-                        if decrypted_path:
-                            pass # decrypted_path = re.sub(r'\.zip', '.m3u8', decrypted_path, flags=re.IGNORECASE)
-                            
+                        dec_path = path if path.startswith("http") else _aes_decrypt(path)
+                        if dec_path:
                             if key:
-                                decrypted_key = decrypt(key)
-                                if decrypted_key:
-                                    return f"{decrypted_path}*{decrypted_key}"
-                                    
-                            return decrypted_path
-            
-            # Fallback to fetchVideoDetailsById if get_mpd_drm_links fails
-            url = f"{api_base}/get/fetchVideoDetailsById?course_id={course_id}&folder_wise_course=1&ytflag=1&video_id={fi}"
-            if userid:
-                url += f"&userid={userid}"
-                
-            r4 = await safe_fetch_json(url, headers)
-            
-            # Fallback for WEB tokens
-            if not r4 or not r4.get("data"):
-                headers["device_type"] = "WEB"
-                headers["appx-version"] = "2"
-                r4 = await safe_fetch_json(url, headers)
+                                dec_key = _aes_decrypt(key)
+                                return f"{dec_path}*{dec_key}" if dec_key else dec_path
+                            return dec_path
 
-            if not r4 or not r4.get("data"):
-                return None
-                
-            jdata = r4.get("data")
-            vl = jdata.get("download_link", "")
-            fl = jdata.get("video_id", "")
-            
-            outputs = []
-            
-            if fl:
-                dfl = decrypt(fl)
-                if dfl:
-                    pass # dfl = re.sub(r'\.zip', '.m3u8', dfl, flags=re.IGNORECASE)
-                    if not ('.m3u8' in dfl or '.mp4' in dfl or 'genomic' in dfl or '/' in dfl):
-                        final_link = f"https://youtu.be/{dfl}"
-                        outputs.append(final_link)
+            return None
 
-            if vl:
-                dvl = decrypt(vl)
-                if dvl:
-                    pass # dvl = re.sub(r'\.zip', '.m3u8', dvl, flags=re.IGNORECASE)
-                    outputs.append(dvl)
-            elif not fl:
-                for link in jdata.get("encrypted_links", []):
-                    a = link.get("path")
-                    k = link.get("key")
-                    if a and k:
-                        k1 = decrypt(k)
-                        k2 = decode_base64(k1)
-                        da = decrypt(a)
-                        if da:
-                            pass # da = re.sub(r'\.zip', '.m3u8', da, flags=re.IGNORECASE)
-                            outputs.append(f"{da}*{k2}")
-                            break
-                    elif a:
-                        if not a.startswith('http') and ':' in a:
-                            da = decrypt(a)
-                        else:
-                            da = a
-                        if da:
-                            pass # da = re.sub(r'\.zip', '.m3u8', da, flags=re.IGNORECASE)
-                            outputs.append(da)
-                            break
-
-            for pdf_num in range(1, 3):
-                pdf_link = jdata.get(f"pdf_link{'' if pdf_num == 1 else str(pdf_num)}", "")
-                pdf_key = jdata.get(f"pdf{'_' if pdf_num == 1 else str(pdf_num)}_encryption_key", "")
-                
-                if pdf_link:
-                    dp = ""
-                    if not pdf_link.startswith('http') and ':' in pdf_link:
-                        dp = decrypt(pdf_link)
-                    else:
-                        dp = pdf_link
-                    
-                    if dp:
-                        pass # dp = re.sub(r'\.zip', '.m3u8', dp, flags=re.IGNORECASE)
-                        if pdf_key:
-                            dpk = decrypt(pdf_key)
-                            if dpk and dpk != "abcdefg":
-                                outputs.append(f"{dp}*{dpk}")
-                            else:
-                                outputs.append(dp)
-                        else:
-                            outputs.append(dp)
-            
-            return outputs[0] if outputs else None
-            
     except Exception as e:
-        import traceback
-        logging.error(f"Error resolving Appx link: {e}\n{traceback.format_exc()}")
+        logging.error(f"resolve_appx_link error: {e}", exc_info=True)
         return None
-
